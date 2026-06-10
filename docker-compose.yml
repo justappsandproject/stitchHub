@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stitchhub-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: stitchhub
+    volumes:
+      - stitchhub_pgdata:/var/lib/postgresql/data
+
+volumes:
+  stitchhub_pgdata:

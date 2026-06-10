@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand palette
+       primary    #312E81 (indigo)
+       secondary  #D4A017 (gold)
+       accent     #10B981 (emerald)
+       background #F9FAFB  foreground #1F2937  muted #6B7280
+       warning    #F59E0B  danger     #EF4444 */
+    --background: 210 20% 98%;
+    --foreground: 215 28% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
+    --primary: 244 47% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 215 28% 17%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 92%;
+    --accent-foreground: 215 28% 17%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 89%;
+    --input: 220 13% 84%;
+    --ring: 244 47% 34%;
+    --radius: 0.625rem;
+
+    /* Brand accents */
+    --gold: 43 80% 46%;
+    --gold-foreground: 0 0% 100%;
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 215 28% 17%;
+
+    /* Deep indigo sidebar */
+    --sidebar: 245 45% 14%;
+    --sidebar-foreground: 220 25% 96%;
+    --sidebar-muted: 240 15% 68%;
+    --sidebar-border: 244 30% 24%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}

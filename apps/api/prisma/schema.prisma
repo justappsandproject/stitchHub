@@ -1,0 +1,417 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Pooled connection (PgBouncer) for app queries
+  url      = env("DATABASE_URL")
+  // Direct connection for migrations and db push
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_OWNER
+  MANAGER
+  TAILOR
+  CUTTER
+  FINISHER
+  APPRENTICE
+  CUSTOMER
+}
+
+enum OrderStatus {
+  NEW
+  MEASURED
+  CUTTING
+  SEWING
+  FITTING
+  FINISHING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  PAYSTACK
+  FLUTTERWAVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MeasurementCategory {
+  MEN
+  WOMEN
+  CHILDREN
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum OrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+// ─── Platform ────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  email       String
+  phone       String?
+  address     String?
+  logoUrl     String?  @map("logo_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users                User[]
+  customers            Customer[]
+  measurementTemplates MeasurementTemplate[]
+  measurements         Measurement[]
+  styles               Style[]
+  orders               Order[]
+  invoices             Invoice[]
+  payments             Payment[]
+  receipts             Receipt[]
+  auditLogs            AuditLog[]
+  subscription         Subscription?
+
+  @@map("tenants")
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  tenantId           String             @unique @map("tenant_id")
+  plan               SubscriptionPlan   @default(STARTER)
+  status             SubscriptionStatus @default(TRIALING)
+  currentPeriodStart DateTime           @default(now()) @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ─── Auth & Users ────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String?   @map("tenant_id")
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  phone        String?
+  role         UserRole
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+  customer      Customer?
+  assignedOrders Order[]       @relation("AssignedWorker")
+  auditLogs     AuditLog[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Customer Management ─────────────────────────────────────────────────────
+
+model Customer {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  userId      String?   @unique @map("user_id")
+  firstName   String    @map("first_name")
+  lastName    String    @map("last_name")
+  phone       String
+  email       String?
+  gender      Gender?
+  dateOfBirth DateTime? @map("date_of_birth")
+  address     String?
+  photoUrl    String?   @map("photo_url")
+  notes       String?
+  isVip       Boolean   @default(false) @map("is_vip")
+  tags        String[]  @default([])
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  measurements Measurement[]
+  orders       Order[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@map("customers")
+}
+
+// ─── Digital Measurement Vault ───────────────────────────────────────────────
+
+model MeasurementTemplate {
+  id        String              @id @default(cuid())
+  tenantId  String              @map("tenant_id")
+  name      String
+  category  MeasurementCategory
+  fields    Json
+  isDefault Boolean             @default(false) @map("is_default")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  measurements Measurement[]
+
+  @@index([tenantId])
+  @@map("measurement_templates")
+}
+
+model Measurement {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  customerId String   @map("customer_id")
+  templateId String   @map("template_id")
+  version    Int      @default(1)
+  values     Json
+  notes      String?
+  takenBy    String?  @map("taken_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  template MeasurementTemplate @relation(fields: [templateId], references: [id])
+  revisions MeasurementRevision[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("measurements")
+}
+
+model MeasurementRevision {
+  id            String   @id @default(cuid())
+  measurementId String   @map("measurement_id")
+  version       Int
+  values        Json
+  notes         String?
+  revisedBy     String?  @map("revised_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  measurement Measurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+
+  @@index([measurementId])
+  @@map("measurement_revisions")
+}
+
+// ─── Style Catalog ─────────────────────────────────────────────────────────────
+
+model Style {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  category    String
+  description String?
+  photoUrls   String[] @default([]) @map("photo_urls")
+  videoUrls   String[] @default([]) @map("video_urls")
+  basePrice   Decimal? @map("base_price") @db.Decimal(12, 2)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([tenantId])
+  @@map("styles")
+}
+
+// ─── Order Management ──────────────────────────────────────────────────────────
+
+model Order {
+  id              String        @id @default(cuid())
+  tenantId        String        @map("tenant_id")
+  customerId      String        @map("customer_id")
+  styleId         String?       @map("style_id")
+  orderNumber     String        @map("order_number")
+  fabric          String?
+  deliveryDate    DateTime?     @map("delivery_date")
+  priority        OrderPriority @default(NORMAL)
+  status          OrderStatus   @default(NEW)
+  notes           String?
+  assignedToId    String?       @map("assigned_to_id")
+  totalAmount     Decimal       @default(0) @map("total_amount") @db.Decimal(12, 2)
+  depositAmount   Decimal       @default(0) @map("deposit_amount") @db.Decimal(12, 2)
+  balanceAmount   Decimal       @default(0) @map("balance_amount") @db.Decimal(12, 2)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     Customer            @relation(fields: [customerId], references: [id])
+  style        Style?              @relation(fields: [styleId], references: [id])
+  assignedTo   User?               @relation("AssignedWorker", fields: [assignedToId], references: [id])
+  statusHistory OrderStatusHistory[]
+  invoices     Invoice[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([customerId])
+  @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String      @map("order_id")
+  status    OrderStatus
+  notes     String?
+  changedBy String?     @map("changed_by")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+// ─── Payments ──────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id            String        @id @default(cuid())
+  tenantId      String        @map("tenant_id")
+  orderId       String        @map("order_id")
+  invoiceNumber String        @map("invoice_number")
+  amount        Decimal       @db.Decimal(12, 2)
+  paidAmount    Decimal       @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  status        InvoiceStatus @default(DRAFT)
+  dueDate       DateTime?     @map("due_date")
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order    Order     @relation(fields: [orderId], references: [id])
+  payments Payment[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  tenantId      String        @map("tenant_id")
+  invoiceId     String?       @map("invoice_id")
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  reference     String?
+  gatewayRef    String?       @map("gateway_ref")
+  notes         String?
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  receipt Receipt?
+
+  @@index([tenantId])
+  @@index([reference])
+  @@map("payments")
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  paymentId     String   @unique @map("payment_id")
+  receiptNumber String   @map("receipt_number")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@unique([tenantId, receiptNumber])
+  @@index([tenantId])
+  @@map("receipts")
+}
+
+// ─── Audit ─────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?  @map("tenant_id")
+  userId     String?  @map("user_id")
+  action     String
+  entity     String
+  entityId   String?  @map("entity_id")
+  metadata   Json?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

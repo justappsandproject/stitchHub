@@ -1,0 +1,21 @@
+{
+  "name": "stitchhub",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "description": "Multi-tenant SaaS platform for fashion businesses",
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "dev:api": "pnpm --filter @stitchhub/api dev",
+    "dev:web": "pnpm --filter @stitchhub/web dev",
+    "build": "pnpm run --parallel build",
+    "db:generate": "pnpm --filter @stitchhub/api db:generate",
+    "db:migrate": "pnpm --filter @stitchhub/api db:migrate",
+    "db:push": "pnpm --filter @stitchhub/api db:push",
+    "db:seed": "pnpm --filter @stitchhub/api db:seed"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
