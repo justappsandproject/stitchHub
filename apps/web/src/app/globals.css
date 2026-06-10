@@ -4,44 +4,40 @@
 
 @layer base {
   :root {
-    /* Brand palette
-       primary    #312E81 (indigo)
-       secondary  #D4A017 (gold)
-       accent     #10B981 (emerald)
-       background #F9FAFB  foreground #1F2937  muted #6B7280
-       warning    #F59E0B  danger     #EF4444 */
-    --background: 210 20% 98%;
-    --foreground: 215 28% 17%;
+    --background: 40 20% 99%;
+    --foreground: 240 12% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
-    --primary: 244 47% 34%;
+    --card-foreground: 240 12% 10%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 215 28% 17%;
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 220 14% 92%;
-    --accent-foreground: 215 28% 17%;
+    --secondary: 240 6% 96%;
+    --secondary-foreground: 240 12% 10%;
+    --muted: 240 6% 96%;
+    --muted-foreground: 240 5% 46%;
+    --accent: 346 77% 96%;
+    --accent-foreground: 346 77% 40%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 89%;
-    --input: 220 13% 84%;
-    --ring: 244 47% 34%;
-    --radius: 0.625rem;
+    --border: 240 6% 90%;
+    --input: 240 6% 86%;
+    --ring: 262 83% 58%;
+    --radius: 0.75rem;
 
-    /* Brand accents */
-    --gold: 43 80% 46%;
+    --gold: 346 77% 58%;
     --gold-foreground: 0 0% 100%;
-    --success: 160 84% 39%;
+    --success: 172 66% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 215 28% 17%;
+    --warning: 32 95% 55%;
+    --warning-foreground: 240 12% 10%;
 
-    /* Deep indigo sidebar */
-    --sidebar: 245 45% 14%;
-    --sidebar-foreground: 220 25% 96%;
-    --sidebar-muted: 240 15% 68%;
-    --sidebar-border: 244 30% 24%;
+    --sidebar: 260 32% 12%;
+    --sidebar-foreground: 240 20% 96%;
+    --sidebar-muted: 260 12% 62%;
+    --sidebar-border: 260 24% 22%;
+
+    --landing-gradient-from: 262 83% 58%;
+    --landing-gradient-via: 346 77% 58%;
+    --landing-gradient-to: 32 95% 55%;
   }
 }
 
@@ -51,5 +47,115 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .landing-mesh {
+    background-color: hsl(260 32% 8%);
+    background-image:
+      radial-gradient(
+        ellipse 80% 60% at 20% 10%,
+        hsl(var(--landing-gradient-from) / 0.45),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 70% 50% at 85% 20%,
+        hsl(var(--landing-gradient-via) / 0.35),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 50% 100%,
+        hsl(var(--landing-gradient-to) / 0.2),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 40% 30% at 90% 80%,
+        hsl(var(--landing-gradient-from) / 0.25),
+        transparent 45%
+      );
+  }
+
+  .landing-grid-pattern {
+    background-image:
+      linear-gradient(hsl(0 0% 100% / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 100% / 0.03) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--landing-gradient-from)),
+      hsl(var(--landing-gradient-via)),
+      hsl(var(--landing-gradient-to))
+    );
+  }
+
+  .border-gradient {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      linear-gradient(
+          135deg,
+          hsl(var(--landing-gradient-from) / 0.5),
+          hsl(var(--landing-gradient-via) / 0.3),
+          hsl(var(--landing-gradient-to) / 0.4)
+        )
+        border-box;
+  }
+
+  .glass-dark {
+    @apply border border-white/10 bg-white/[0.06] backdrop-blur-xl;
+  }
+
+  .glass-light {
+    @apply border border-white/60 bg-white/70 backdrop-blur-xl;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: float 6s ease-in-out 2s infinite;
+  }
+
+  .animate-marquee {
+    animation: marquee 32s linear infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
   }
 }

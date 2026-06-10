@@ -5,7 +5,7 @@
   "packageManager": "pnpm@9.15.9",
   "description": "Multi-tenant SaaS platform for fashion businesses",
   "scripts": {
-    "dev": "pnpm --filter @stitchhub/shared build && pnpm run --parallel dev:api dev:web dev:shared",
+    "dev": "pnpm --filter @stitchhub/shared build && pnpm -r --parallel --filter @stitchhub/api --filter @stitchhub/web --filter @stitchhub/shared dev",
     "dev:api": "pnpm --filter @stitchhub/api dev",
     "dev:web": "pnpm --filter @stitchhub/web dev",
     "dev:shared": "pnpm --filter @stitchhub/shared dev",

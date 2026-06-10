@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Playfair_Display } from 'next/font/google';
+import { Geist, Geist_Mono, Playfair_Display, Syne } from 'next/font/google';
 import './globals.css';
 
 const geistSans = Geist({
@@ -17,6 +17,12 @@ const playfair = Playfair_Display({
   subsets: ['latin'],
 });
 
+const syne = Syne({
+  variable: '--font-heading',
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+});
+
 export const metadata: Metadata = {
   title: 'StitchHub — Fashion Business Management',
   description:
@@ -31,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${syne.variable} font-sans antialiased`}
       >
         {children}
       </body>
