@@ -3,9 +3,10 @@ services:
     name: stitchhub-api
     runtime: node
     plan: free
-    rootDir: apps/api
-    buildCommand: cd ../.. && pnpm install && pnpm --filter @stitchhub/api db:generate && pnpm --filter @stitchhub/api build
-    startCommand: node dist/main.js
+    # Use repo root so the full monorepo (packages/shared) is available.
+    rootDir: .
+    buildCommand: corepack enable && pnpm install && pnpm build:api
+    startCommand: node apps/api/dist/src/main.js
     healthCheckPath: /api/v1/subscriptions/plans
     envVars:
       - key: NODE_ENV
