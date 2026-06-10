@@ -179,11 +179,11 @@ After the Blueprint creates the service, set these env vars on Render (if not pr
 | Setting | Value |
 |---------|-------|
 | Root Directory | *(leave empty)* |
-| Build Command | `corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api build` |
+| Build Command | `corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api... build` |
 | Start Command | `node apps/api/dist/src/main.js` |
 
 > If Root Directory is set to `apps/api`, use this Build Command instead:
-> `cd ../.. && corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api build`
+> `cd ../.. && corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api... build`
 > and Start Command: `node dist/src/main.js`
 
 | Variable | Value |

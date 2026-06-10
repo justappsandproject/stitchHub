@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "prebuild": "pnpm exec prisma generate",
+    "prebuild": "pnpm --filter @stitchhub/shared build && pnpm exec prisma generate",
     "dev": "nest start --watch",
     "start": "node dist/src/main",
     "start:prod": "node dist/src/main",

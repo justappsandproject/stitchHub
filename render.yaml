@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api build
+    buildCommand: corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api... build
     startCommand: node apps/api/dist/src/main.js
     healthCheckPath: /api/v1/subscriptions/plans
     envVars:
