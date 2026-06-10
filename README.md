@@ -174,6 +174,18 @@ Or: Render Dashboard → **New** → **Blueprint** → connect `justappsandproje
 
 After the Blueprint creates the service, set these env vars on Render (if not prompted):
 
+**Manual Render settings** (if not using Blueprint):
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | *(leave empty)* |
+| Build Command | `corepack enable && pnpm install && pnpm --filter @stitchhub/api db:generate && pnpm --filter @stitchhub/api build` |
+| Start Command | `node apps/api/dist/src/main.js` |
+
+> If Root Directory is set to `apps/api`, use this Build Command instead:
+> `cd ../.. && corepack enable && pnpm install && pnpm --filter @stitchhub/api db:generate && pnpm --filter @stitchhub/api build`
+> and Start Command: `node dist/src/main.js`
+
 | Variable | Value |
 |----------|-------|
 | `DATABASE_URL` | Supabase pooler URL + `?sslmode=require&connect_timeout=15` |
