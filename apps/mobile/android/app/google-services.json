@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "stitchhub-mobile",
-    "storage_bucket": "stitchhub-mobile.firebasestorage.app"
+    "project_number": "359558295805",
+    "project_id": "stitchhubpromax",
+    "storage_bucket": "stitchhubpromax.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:359558295805:android:0000000000000000000000",
         "android_client_info": {
           "package_name": "com.stitchhub.stitchhub_mobile"
         }

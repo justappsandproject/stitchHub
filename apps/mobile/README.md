@@ -65,29 +65,33 @@ flutter run --dart-define=API_BASE_URL=http://localhost:3001/api/v1
 
 ## Push notifications setup
 
-Firebase config files are included for project **`stitchhub-mobile`**:
+Firebase config files are wired for project **`stitchhubpromax`** (project number `359558295805`):
 
 - `lib/firebase_options.dart`
 - `android/app/google-services.json`
 - `ios/Runner/GoogleService-Info.plist`
 - `firebase.json` / `.firebaserc`
 
-### Connect your Firebase project
+### Register apps & fetch API keys
 
-1. Create a project at [console.firebase.google.com](https://console.firebase.google.com) (or use existing)
-2. Enable **Cloud Messaging** in Firebase Console
-3. Regenerate config with FlutterFire:
+1. In [Firebase Console](https://console.firebase.google.com/project/stitchhubpromax), add:
+   - **Android** app — package `com.stitchhub.stitchhub_mobile`
+   - **iOS** app — bundle ID `com.stitchhub.stitchhubMobile`
+2. Enable **Cloud Messaging**
+3. Run locally:
 
 ```bash
-dart pub global activate flutterfire_cli
-cd apps/mobile
-flutterfire configure --project=YOUR_FIREBASE_PROJECT_ID
+firebase login
+chmod +x apps/mobile/scripts/configure_firebase.sh
+./apps/mobile/scripts/configure_firebase.sh
 ```
 
-This replaces placeholder API keys with your real project credentials.
+Or manually:
 
-4. For iOS push: upload APNs key in Firebase Console → Project Settings → Cloud Messaging
-5. Enable **Push Notifications** capability in Xcode for the Runner target
+```bash
+cd apps/mobile
+flutterfire configure --project=stitchhubpromax
+```
 
 ## Offline sync
 
