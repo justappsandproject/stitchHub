@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:359558295805:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:359558295805:android:45e7aee91d2e4983d18e94",
         "android_client_info": {
           "package_name": "com.stitchhub.stitchhub_mobile"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyPLACEHOLDER_ANDROID_KEY_REPLACE_ME"
+          "current_key": "AIzaSyAE5JyjlOyj7FvUpJrlubFcPAJS2UfCcTM"
         }
       ],
       "services": {

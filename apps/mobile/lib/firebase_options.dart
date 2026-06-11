@@ -1,15 +1,9 @@
+// File generated from Firebase project stitchhubpromax.
+// ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Firebase configuration for StitchHub Mobile (`stitchhubpromax`).
-///
-/// After registering Android/iOS apps in Firebase Console, run:
-/// ```bash
-/// firebase login
-/// cd apps/mobile
-/// flutterfire configure --project=stitchhubpromax
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -30,16 +24,16 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyPLACEHOLDER_ANDROID_KEY_REPLACE_ME',
-    appId: '1:359558295805:android:0000000000000000000000',
+    apiKey: 'AIzaSyAE5JyjlOyj7FvUpJrlubFcPAJS2UfCcTM',
+    appId: '1:359558295805:android:45e7aee91d2e4983d18e94',
     messagingSenderId: '359558295805',
     projectId: 'stitchhubpromax',
     storageBucket: 'stitchhubpromax.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyPLACEHOLDER_IOS_KEY_REPLACE_ME',
-    appId: '1:359558295805:ios:0000000000000000000000',
+    apiKey: 'AIzaSyDfzV3zyRQZdeg3FB5tLqP2sSMcIqqz3jU',
+    appId: '1:359558295805:ios:adbbd9c795e17400d18e94',
     messagingSenderId: '359558295805',
     projectId: 'stitchhubpromax',
     storageBucket: 'stitchhubpromax.firebasestorage.app',

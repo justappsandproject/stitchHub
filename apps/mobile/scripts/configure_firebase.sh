@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 echo "Configuring Firebase for stitchhubpromax..."
 flutterfire configure \
   --project=stitchhubpromax \
-  --android-app-id=com.stitchhub.stitchhub_mobile \
+  --android-package-name=com.stitchhub.stitchhub_mobile \
   --ios-bundle-id=com.stitchhub.stitchhubMobile \
   --out=lib/firebase_options.dart \
   --yes

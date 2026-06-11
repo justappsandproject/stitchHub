@@ -4,14 +4,14 @@
       "android": {
         "default": {
           "projectId": "stitchhubpromax",
-          "appId": "1:359558295805:android:0000000000000000000000",
+          "appId": "1:359558295805:android:45e7aee91d2e4983d18e94",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
           "projectId": "stitchhubpromax",
-          "appId": "1:359558295805:ios:0000000000000000000000",
+          "appId": "1:359558295805:ios:adbbd9c795e17400d18e94",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
@@ -20,8 +20,8 @@
         "lib/firebase_options.dart": {
           "projectId": "stitchhubpromax",
           "configurations": {
-            "android": "1:359558295805:android:0000000000000000000000",
-            "ios": "1:359558295805:ios:0000000000000000000000"
+            "android": "1:359558295805:android:45e7aee91d2e4983d18e94",
+            "ios": "1:359558295805:ios:adbbd9c795e17400d18e94"
           }
         }
       }
