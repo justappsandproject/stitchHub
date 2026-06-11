@@ -16,7 +16,8 @@
     "db:generate": "pnpm --filter @stitchhub/api db:generate",
     "db:migrate": "pnpm --filter @stitchhub/api db:migrate",
     "db:push": "pnpm --filter @stitchhub/api db:push",
-    "db:seed": "pnpm --filter @stitchhub/api db:seed"
+    "db:seed": "pnpm --filter @stitchhub/api db:seed",
+    "dev:mobile": "pnpm --filter @stitchhub/shared build && cd apps/mobile && flutter run"
   },
   "engines": {
     "node": ">=20.0.0",

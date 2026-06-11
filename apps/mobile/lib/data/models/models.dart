@@ -1,0 +1,164 @@
+import 'dart:convert';
+
+import 'package:stitchhub_mobile/core/constants/enums.dart';
+import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
+import 'package:stitchhub_mobile/domain/entities/user_entity.dart';
+
+class UserModel extends UserEntity {
+  const UserModel({
+    required super.id,
+    required super.email,
+    required super.role,
+    required super.firstName,
+    required super.lastName,
+    super.tenantId,
+    super.fashionHouseName,
+    super.customerId,
+  });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
+        id: json['id'] as String,
+        email: json['email'] as String,
+        role: UserRole.fromString(json['role'] as String),
+        firstName: json['firstName'] as String? ?? '',
+        lastName: json['lastName'] as String? ?? '',
+        tenantId: json['tenantId'] as String?,
+        fashionHouseName: json['fashionHouseName'] as String?,
+        customerId: (json['customer'] as Map<String, dynamic>?)?['id'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'role': role.value,
+        'firstName': firstName,
+        'lastName': lastName,
+        'tenantId': tenantId,
+        'fashionHouseName': fashionHouseName,
+      };
+
+  String toJsonString() => jsonEncode(toJson());
+}
+
+class OrderModel extends OrderEntity {
+  const OrderModel({
+    required super.id,
+    required super.orderNumber,
+    required super.status,
+    required super.customerName,
+    required super.totalAmount,
+    required super.createdAt,
+    super.fabric,
+    super.deliveryDate,
+    super.priority,
+    super.balanceAmount,
+  });
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    final customer = json['customer'] as Map<String, dynamic>?;
+    final customerName = customer != null
+        ? '${customer['firstName'] ?? ''} ${customer['lastName'] ?? ''}'.trim()
+        : 'Customer';
+
+    return OrderModel(
+      id: json['id'] as String,
+      orderNumber: json['orderNumber'] as String? ?? '',
+      status: OrderStatus.fromString(json['status'] as String? ?? 'NEW'),
+      customerName: customerName,
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      fabric: json['fabric'] as String?,
+      deliveryDate: json['deliveryDate'] != null
+          ? DateTime.tryParse(json['deliveryDate'] as String)
+          : null,
+      priority: json['priority'] as String?,
+      balanceAmount: (json['balanceAmount'] as num?)?.toDouble(),
+    );
+  }
+}
+
+class CustomerModel extends CustomerEntity {
+  const CustomerModel({
+    required super.id,
+    required super.firstName,
+    required super.lastName,
+    required super.phone,
+    super.email,
+    super.isVip,
+  });
+
+  factory CustomerModel.fromJson(Map<String, dynamic> json) => CustomerModel(
+        id: json['id'] as String,
+        firstName: json['firstName'] as String? ?? '',
+        lastName: json['lastName'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        email: json['email'] as String?,
+        isVip: json['isVip'] as bool? ?? false,
+      );
+}
+
+class MessageModel extends MessageEntity {
+  const MessageModel({
+    required super.id,
+    required super.body,
+    required super.createdAt,
+    required super.senderName,
+    required super.senderRole,
+    super.readAt,
+  });
+
+  factory MessageModel.fromJson(Map<String, dynamic> json) {
+    final sender = json['sender'] as Map<String, dynamic>? ?? {};
+    return MessageModel(
+      id: json['id'] as String,
+      body: json['body'] as String? ?? '',
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      senderName:
+          '${sender['firstName'] ?? ''} ${sender['lastName'] ?? ''}'.trim(),
+      senderRole: UserRole.fromString(sender['role'] as String? ?? 'CUSTOMER'),
+      readAt: json['readAt'] != null
+          ? DateTime.tryParse(json['readAt'] as String)
+          : null,
+    );
+  }
+}
+
+class AdminTenantModel extends AdminTenantEntity {
+  const AdminTenantModel({
+    required super.id,
+    required super.name,
+    required super.slug,
+    required super.isActive,
+    super.plan,
+    super.subscriptionStatus,
+  });
+
+  factory AdminTenantModel.fromJson(Map<String, dynamic> json) {
+    final sub = json['subscription'] as Map<String, dynamic>?;
+    return AdminTenantModel(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      isActive: json['isActive'] as bool? ?? true,
+      plan: sub?['plan'] as String?,
+      subscriptionStatus: sub?['status'] as String?,
+    );
+  }
+}
+
+class SubscriptionModel extends SubscriptionEntity {
+  const SubscriptionModel({
+    required super.plan,
+    required super.status,
+    required super.isSuspended,
+    required super.requiresPayment,
+  });
+
+  factory SubscriptionModel.fromJson(Map<String, dynamic> json) =>
+      SubscriptionModel(
+        plan: SubscriptionPlan.fromString(json['plan'] as String? ?? 'STARTER'),
+        status: json['status'] as String? ?? 'TRIALING',
+        isSuspended: json['isSuspended'] as bool? ?? false,
+        requiresPayment: json['requiresPayment'] as bool? ?? false,
+      );
+}

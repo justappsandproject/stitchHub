@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:stitchhub_mobile/core/constants/enums.dart';
+import 'package:stitchhub_mobile/core/utils/role_utils.dart';
+import 'package:stitchhub_mobile/domain/entities/user_entity.dart';
+import 'package:stitchhub_mobile/presentation/pages/admin/admin_home_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/admin/admin_messages_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/admin/admin_tenants_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/auth/login_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/customer/customer_home_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/orders_page.dart'
+    show CustomerOrdersPage, OrdersPage;
+import 'package:stitchhub_mobile/presentation/pages/designer/billing_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/customers_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/designer_home_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/messages_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
+
+typedef AuthUserResolver = UserEntity? Function();
+
+class AppRouter {
+  static const login = '/login';
+  static const splash = '/';
+  static const adminHome = '/admin';
+  static const adminTenants = '/admin/tenants';
+  static const adminMessages = '/admin/messages';
+  static const designerHome = '/designer';
+  static const designerOrders = '/designer/orders';
+  static const designerCustomers = '/designer/customers';
+  static const designerMessages = '/designer/messages';
+  static const designerBilling = '/designer/billing';
+  static const customerHome = '/customer';
+  static const customerOrders = '/customer/orders';
+  static const settings = '/settings';
+
+  static GoRouter create({
+    AuthUserResolver? user,
+    Listenable? refreshListenable,
+  }) {
+    UserEntity? resolveUser() => user?.call();
+
+    return GoRouter(
+      initialLocation: splash,
+      refreshListenable: refreshListenable,
+      redirect: (context, state) {
+        final path = state.matchedLocation;
+        final currentUser = resolveUser();
+        final loggingIn = path == login;
+
+        if (currentUser == null) {
+          if (path == splash || loggingIn) return null;
+          return login;
+        }
+
+        if (loggingIn || path == splash) {
+          return homeForRole(currentUser.role);
+        }
+
+        if (path.startsWith('/admin') && !isSuperAdmin(currentUser.role)) {
+          return homeForRole(currentUser.role);
+        }
+        if (path.startsWith('/designer') && !isStaff(currentUser.role)) {
+          return homeForRole(currentUser.role);
+        }
+        if (path.startsWith('/customer') && !isCustomer(currentUser.role)) {
+          return homeForRole(currentUser.role);
+        }
+
+        return null;
+      },
+      routes: [
+        GoRoute(path: splash, builder: (_, __) => const SplashPage()),
+        GoRoute(path: login, builder: (_, __) => const LoginPage()),
+        GoRoute(path: settings, builder: (_, __) => const SettingsPage()),
+        GoRoute(path: adminHome, builder: (_, __) => const AdminHomePage()),
+        GoRoute(path: adminTenants, builder: (_, __) => const AdminTenantsPage()),
+        GoRoute(path: adminMessages, builder: (_, __) => const AdminMessagesPage()),
+        GoRoute(path: designerHome, builder: (_, __) => const DesignerHomePage()),
+        GoRoute(path: designerOrders, builder: (_, __) => const OrdersPage()),
+        GoRoute(path: designerCustomers, builder: (_, __) => const CustomersPage()),
+        GoRoute(path: designerMessages, builder: (_, __) => const MessagesPage()),
+        GoRoute(path: designerBilling, builder: (_, __) => const BillingPage()),
+        GoRoute(path: customerHome, builder: (_, __) => const CustomerHomePage()),
+        GoRoute(path: customerOrders, builder: (_, __) => const CustomerOrdersPage()),
+      ],
+    );
+  }
+
+  static String homeForRole(UserRole role) {
+    if (isSuperAdmin(role)) return adminHome;
+    if (isStaff(role)) return designerHome;
+    return customerHome;
+  }
+}

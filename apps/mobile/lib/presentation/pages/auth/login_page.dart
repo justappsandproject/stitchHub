@@ -1,0 +1,97 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:stitchhub_mobile/presentation/blocs/auth/auth_bloc.dart';
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: BlocConsumer<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message)),
+              );
+            }
+          },
+          builder: (context, state) {
+            final loading = state is AuthLoading;
+
+            return ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const SizedBox(height: 48),
+                const Icon(Icons.cut, size: 72, color: Color(0xFF7C3AED)),
+                const SizedBox(height: 16),
+                Text(
+                  'Welcome to StitchHub',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in as a customer, fashion designer, or platform admin.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: loading
+                      ? null
+                      : () {
+                          context.read<AuthBloc>().add(
+                                AuthLoginRequested(
+                                  email: _emailController.text.trim(),
+                                  password: _passwordController.text,
+                                ),
+                              );
+                        },
+                  child: Text(loading ? 'Signing in...' : 'Sign in'),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Demo accounts:\n'
+                  'Admin: admin@stitchhub.com / admin123\n'
+                  'Designer: owner@elegantstitches.com / demo1234',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
