@@ -24,7 +24,7 @@ const statConfig = [
   { key: 'totalRevenue', label: 'Revenue', icon: TrendingUp, format: 'currency' },
   { key: 'outstandingBalance', label: 'Outstanding', icon: CreditCard, format: 'currency' },
   { key: 'deliveredOrders', label: 'Delivered', icon: Package },
-];
+] as const;
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -36,7 +36,7 @@ export default function DashboardPage() {
 
     dashboardApi
       .get(token)
-      .then(setData)
+      .then((res) => setData(res as DashboardData))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -67,7 +67,7 @@ export default function DashboardPage() {
           // The naira sign renders poorly in the serif display font, so it
           // gets a sans-serif span of its own.
           const display =
-            stat.format === 'currency' ? (
+            'format' in stat && stat.format === 'currency' ? (
               <>
                 <span className="mr-0.5 font-sans text-xl font-semibold text-muted-foreground">
                   ₦

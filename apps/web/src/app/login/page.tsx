@@ -14,7 +14,9 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { authApi } from '@/lib/api';
+import { isSuperAdmin } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,7 +35,7 @@ export default function LoginPage() {
       localStorage.setItem('accessToken', res.accessToken);
       localStorage.setItem('refreshToken', res.refreshToken);
       localStorage.setItem('user', JSON.stringify(res.user));
-      router.push('/dashboard');
+      router.push(isSuperAdmin(res.user.role) ? '/admin' : '/dashboard');
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
       setError(apiErr.message ?? 'Login failed');
@@ -72,9 +74,8 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

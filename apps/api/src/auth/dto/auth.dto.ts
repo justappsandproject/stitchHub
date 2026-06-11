@@ -90,3 +90,15 @@ export class RegisterStaffDto {
   @IsString()
   phone?: string;
 }
+
+export class ChangePasswordDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  currentPassword: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}

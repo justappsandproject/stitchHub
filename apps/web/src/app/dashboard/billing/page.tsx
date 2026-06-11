@@ -1,7 +1,8 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, CreditCard } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { api } from '@/lib/api';
+import { api, billingApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface PlanInfo {
@@ -27,6 +28,8 @@ interface CurrentSubscription {
   plan: string;
   status: string;
   currentPeriodEnd: string;
+  isSuspended?: boolean;
+  requiresPayment?: boolean;
   config: {
     name: string;
     priceNgn: number;
@@ -43,7 +46,7 @@ interface CurrentSubscription {
 const statusLabels: Record<string, string> = {
   TRIALING: 'Free trial',
   ACTIVE: 'Active',
-  PAST_DUE: 'Past due',
+  PAST_DUE: 'Past due — payment required',
   CANCELLED: 'Cancelled',
 };
 
@@ -81,20 +84,25 @@ function UsageBar({
 }
 
 export default function BillingPage() {
+  const searchParams = useSearchParams();
   const [current, setCurrent] = useState<CurrentSubscription | null>(null);
   const [plans, setPlans] = useState<PlanInfo[]>([]);
+  const [paystackEnabled, setPaystackEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [changing, setChanging] = useState<string | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const loadData = useCallback(async () => {
     try {
-      const [sub, planList] = await Promise.all([
+      const [sub, planList, paystack] = await Promise.all([
         api<CurrentSubscription>('/subscriptions/current'),
         api<PlanInfo[]>('/subscriptions/plans'),
+        billingApi.getPaystackConfig(),
       ]);
       setCurrent(sub);
       setPlans(planList);
+      setPaystackEnabled(paystack.enabled);
     } catch (err) {
       console.error(err);
     } finally {
@@ -106,26 +114,54 @@ export default function BillingPage() {
     loadData();
   }, [loadData]);
 
-  async function handleChangePlan(plan: string) {
+  useEffect(() => {
+    const reference = searchParams.get('reference');
+    if (!reference) return;
+
+    billingApi
+      .verifyPaystack(reference)
+      .then(() => {
+        setSuccess('Payment successful! Your subscription is now active.');
+        loadData();
+        window.history.replaceState({}, '', '/dashboard/billing');
+      })
+      .catch((err: { message?: string }) => {
+        setError(err.message ?? 'Payment verification failed');
+      });
+  }, [searchParams, loadData]);
+
+  async function handlePay(plan: string) {
     setError('');
-    setChanging(plan);
+    setSuccess('');
+    setPaying(plan);
     try {
+      if (paystackEnabled) {
+        const init = await billingApi.initializePaystack(plan);
+        window.location.href = init.authorizationUrl;
+        return;
+      }
       await api('/subscriptions/change-plan', {
         method: 'POST',
         body: JSON.stringify({ plan }),
       });
+      setSuccess('Plan activated successfully.');
       await loadData();
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
-      setError(apiErr.message ?? 'Failed to change plan');
+      setError(apiErr.message ?? 'Payment failed');
     } finally {
-      setChanging(null);
+      setPaying(null);
     }
   }
 
   if (loading) {
     return <p className="text-muted-foreground">Loading billing...</p>;
   }
+
+  const suspended =
+    current?.isSuspended ||
+    current?.requiresPayment ||
+    current?.status === 'PAST_DUE';
 
   return (
     <div className="space-y-8">
@@ -138,9 +174,27 @@ export default function BillingPage() {
         </p>
       </div>
 
+      {suspended && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="text-amber-900">Account suspended</CardTitle>
+            <CardDescription className="text-amber-800/80">
+              Your 14-day trial has ended. Choose a plan below and pay with
+              Paystack to restore access to customers, orders, and all atelier
+              features.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-md bg-success/10 p-3 text-sm text-success">
+          {success}
         </div>
       )}
 
@@ -223,9 +277,7 @@ export default function BillingPage() {
                     <span className="font-display text-3xl font-semibold">
                       ₦{plan.priceNgn.toLocaleString()}
                     </span>
-                    <span className="text-sm text-muted-foreground">
-                      /month
-                    </span>
+                    <span className="text-sm text-muted-foreground">/month</span>
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
@@ -242,15 +294,20 @@ export default function BillingPage() {
                   </ul>
                   <Button
                     className="w-full"
-                    variant={isCurrent ? 'outline' : 'default'}
-                    disabled={isCurrent || changing !== null}
-                    onClick={() => handleChangePlan(plan.plan)}
+                    variant={isCurrent && !suspended ? 'outline' : 'default'}
+                    disabled={
+                      (isCurrent && !suspended) || paying !== null
+                    }
+                    onClick={() => handlePay(plan.plan)}
                   >
-                    {isCurrent
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {isCurrent && !suspended
                       ? 'Current plan'
-                      : changing === plan.plan
-                        ? 'Switching...'
-                        : `Switch to ${plan.name}`}
+                      : paying === plan.plan
+                        ? 'Processing...'
+                        : paystackEnabled
+                          ? `Pay with Paystack`
+                          : `Activate ${plan.name}`}
                   </Button>
                 </CardContent>
               </Card>
@@ -260,8 +317,9 @@ export default function BillingPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Online payment for subscriptions (Paystack / Flutterwave) is coming
-        soon. Plan changes take effect immediately.
+        {paystackEnabled
+          ? 'Payments are processed securely via Paystack. Add PAYSTACK_SECRET_KEY and PAYSTACK_PUBLIC_KEY on the API server.'
+          : 'Paystack is not configured — plans activate instantly in demo mode. Add Paystack keys to enable live payments.'}
       </p>
     </div>
   );

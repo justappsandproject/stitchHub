@@ -2,12 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Sidebar } from '@/components/layout/sidebar';
-import { SubscriptionBanner } from '@/components/layout/subscription-banner';
+import { AdminSidebar } from '@/components/layout/admin-sidebar';
 import { authApi, type AuthUser } from '@/lib/api';
 import { isSuperAdmin } from '@/lib/auth';
 
-export default function DashboardLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -24,26 +23,26 @@ export default function DashboardLayout({
     }
 
     const parsed = JSON.parse(stored) as AuthUser;
-    if (isSuperAdmin(parsed.role)) {
-      router.push('/admin');
+    if (!isSuperAdmin(parsed.role)) {
+      router.push('/dashboard');
       return;
     }
 
     authApi
       .getProfile(token)
       .then((profile) => {
-        if (isSuperAdmin(profile.role)) {
-          router.push('/admin');
+        if (!isSuperAdmin(profile.role)) {
+          router.push('/dashboard');
           return;
         }
         setUser(profile);
         localStorage.setItem('user', JSON.stringify(profile));
       })
       .catch(() => {
-        if (!isSuperAdmin(parsed.role)) {
+        if (isSuperAdmin(parsed.role)) {
           setUser(parsed);
         } else {
-          router.push('/admin');
+          router.push('/dashboard');
         }
       });
   }, [router]);
@@ -59,8 +58,8 @@ export default function DashboardLayout({
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-3 text-muted-foreground">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-gold" />
-          Loading your atelier...
+          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+          Loading platform admin...
         </div>
       </div>
     );
@@ -71,37 +70,33 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        fashionHouseName={user.fashionHouseName ?? undefined}
-        onLogout={handleLogout}
-      />
+      <AdminSidebar onLogout={handleLogout} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-8">
-          <p className="text-sm text-muted-foreground">
-            Welcome back,{' '}
-            <span className="font-medium text-foreground">
-              {user.firstName}
-            </span>
-          </p>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-primary">
+              Platform Administration
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Manage fashion houses, subscriptions, and platform health
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-sm font-medium leading-tight">
                 {user.firstName} {user.lastName}
               </p>
-              {user.fashionHouseName && (
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  {user.fashionHouseName}
-                </p>
-              )}
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Super Admin
+              </p>
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground ring-2 ring-gold/40">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-rose-500 text-xs font-semibold text-white ring-2 ring-primary/20">
               {initials}
             </div>
           </div>
         </header>
-        <SubscriptionBanner />
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl p-8">{children}</div>
+        <main className="flex-1 overflow-y-auto bg-muted/30">
+          <div className="mx-auto max-w-7xl p-8">{children}</div>
         </main>
       </div>
     </div>

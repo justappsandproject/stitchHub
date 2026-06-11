@@ -9,6 +9,10 @@ import { resolveTenantId } from '../common/utils/tenant-scope';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UpdateTenantDto } from './dto/tenant.dto';
+import {
+  AdminUpdateTenantDto,
+  ResetOwnerPasswordDto,
+} from './dto/admin-tenant.dto';
 import { TenantsService } from './tenants.service';
 
 @ApiTags('Tenants')
@@ -48,5 +52,22 @@ export class TenantsController {
   ) {
     const tenantId = resolveTenantId(user);
     return this.tenantsService.update(tenantId, dto);
+  }
+
+  @Patch(':id/admin')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  adminUpdate(@Param('id') id: string, @Body() dto: AdminUpdateTenantDto) {
+    return this.tenantsService.adminUpdate(id, dto);
+  }
+
+  @Patch(':id/owner-password')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  resetOwnerPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetOwnerPasswordDto,
+  ) {
+    return this.tenantsService.resetOwnerPassword(id, dto.newPassword);
   }
 }

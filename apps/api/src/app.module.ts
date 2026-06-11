@@ -9,6 +9,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TenantsModule } from './tenants/tenants.module';
     PaymentsModule,
     DashboardModule,
     SubscriptionsModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

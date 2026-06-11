@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -12,6 +12,7 @@ import {
   RefreshTokenDto,
   RegisterStaffDto,
   RegisterTenantDto,
+  ChangePasswordDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -60,5 +61,19 @@ export class AuthController {
   @ApiBearerAuth()
   getProfile(@CurrentUser() user: JwtPayload) {
     return this.authService.getProfile(user.sub);
+  }
+
+  @Patch('password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(
+      user.sub,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 }

@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { authApi } from '@/lib/api';
 
@@ -142,9 +143,8 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   value={form.password}
                   onChange={(e) => update('password', e.target.value)}
                   minLength={8}

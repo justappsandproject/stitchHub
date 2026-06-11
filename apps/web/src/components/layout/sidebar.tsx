@@ -5,14 +5,18 @@ import {
   Gem,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Ruler,
   Scissors,
+  Settings,
   ShoppingBag,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogoMark } from '@/components/brand/logo';
+import { NavBadge } from '@/components/messages/nav-badge';
+import { useUnreadMessages } from '@/hooks/use-unread-messages';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -23,6 +27,8 @@ const navItems = [
   { href: '/dashboard/production', label: 'Production', icon: Scissors },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
   { href: '/dashboard/billing', label: 'Billing', icon: Gem },
+  { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
 interface SidebarProps {
@@ -32,6 +38,7 @@ interface SidebarProps {
 
 export function Sidebar({ fashionHouseName, onLogout }: SidebarProps) {
   const pathname = usePathname();
+  const { count: unreadMessages } = useUnreadMessages();
 
   return (
     <aside className="flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground">
@@ -79,6 +86,9 @@ export function Sidebar({ fashionHouseName, onLogout }: SidebarProps) {
                 )}
               />
               {item.label}
+              {item.href === '/dashboard/messages' && (
+                <NavBadge count={unreadMessages} className="bg-rose-500" />
+              )}
             </Link>
           );
         })}

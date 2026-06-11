@@ -114,10 +114,78 @@ export const authApi = {
 
   getProfile: (token: string) =>
     api<AuthUser>('/auth/me', { token }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api<{ message: string }>('/auth/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 };
 
 export const dashboardApi = {
-  get: (token: string) => api<DashboardData>('/dashboard', { token }),
+  get: (token: string) => api<DashboardData | SuperAdminDashboardData>('/dashboard', { token }),
+};
+
+export const tenantsApi = {
+  list: (token: string) => api<TenantRecord[]>('/tenants', { token }),
+
+  adminUpdate: (
+    tenantId: string,
+    data: { isActive?: boolean; plan?: string },
+  ) =>
+    api(`/tenants/${tenantId}/admin`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  resetOwnerPassword: (tenantId: string, newPassword: string) =>
+    api(`/tenants/${tenantId}/owner-password`, {
+      method: 'PATCH',
+      body: JSON.stringify({ newPassword }),
+    }),
+};
+
+export const messagesApi = {
+  listThreads: () => api<MessageThread[]>('/messages/threads'),
+
+  unreadCount: () => api<{ count: number }>('/messages/unread-count'),
+
+  getThread: (tenantId: string) =>
+    api<MessageThreadDetail>(`/messages/tenant/${tenantId}`),
+
+  getInbox: () => api<MessageThreadDetail>('/messages/inbox'),
+
+  send: (body: string, tenantId?: string) =>
+    api('/messages', {
+      method: 'POST',
+      body: JSON.stringify({ body, tenantId }),
+    }),
+
+  markRead: (tenantId: string) =>
+    api(`/messages/tenant/${tenantId}/read`, { method: 'PATCH' }),
+};
+
+export const billingApi = {
+  getPaystackConfig: () =>
+    api<{ enabled: boolean; publicKey: string | null }>(
+      '/subscriptions/paystack/config',
+    ),
+
+  initializePaystack: (plan: string) =>
+    api<{
+      authorizationUrl: string;
+      reference: string;
+      amount: number;
+      plan: string;
+    }>('/subscriptions/paystack/initialize', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    }),
+
+  verifyPaystack: (reference: string) =>
+    api<{ status: string; plan: string }>(
+      `/subscriptions/paystack/verify?reference=${encodeURIComponent(reference)}`,
+    ),
 };
 
 export interface AuthUser {
@@ -141,7 +209,14 @@ export interface RegisterTenantData {
 }
 
 export interface DashboardData {
-  summary: Record<string, number>;
+  summary: {
+    totalCustomers: number;
+    totalOrders: number;
+    activeOrders: number;
+    deliveredOrders: number;
+    totalRevenue: number;
+    outstandingBalance: number;
+  };
   ordersByStatus?: { status: string; count: number }[];
   recentOrders?: Array<{
     id: string;
@@ -150,11 +225,85 @@ export interface DashboardData {
     totalAmount: number;
     customer: { firstName: string; lastName: string };
   }>;
+}
+
+export interface SuperAdminDashboardData {
+  summary: {
+    totalTenants: number;
+    activeTenants: number;
+    totalUsers: number;
+    totalOrders: number;
+    monthlyRecurringRevenue: number;
+  };
+  planBreakdown?: Array<{
+    plan: string;
+    status: string;
+    count: number;
+  }>;
   recentTenants?: Array<{
     id: string;
     name: string;
     slug: string;
     isActive: boolean;
+    createdAt: string;
+    subscription?: { plan: string; status: string } | null;
     _count: { customers: number; orders: number };
   }>;
+}
+
+export interface TenantRecord {
+  id: string;
+  name: string;
+  slug: string;
+  email: string | null;
+  phone: string | null;
+  isActive: boolean;
+  createdAt: string;
+  subscription?: {
+    plan: string;
+    status: string;
+    currentPeriodEnd: string | null;
+  } | null;
+  _count: { users: number; customers: number; orders: number };
+  users?: Array<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }>;
+}
+
+export interface MessageThread {
+  tenantId: string;
+  tenantName: string;
+  slug: string;
+  unreadCount: number;
+  lastMessage: {
+    id: string;
+    body: string;
+    createdAt: string;
+    readAt: string | null;
+    isUnread?: boolean;
+    sender: { role: string; firstName: string; lastName: string };
+  } | null;
+}
+
+export interface PlatformMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+  sender: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    email?: string;
+  };
+}
+
+export interface MessageThreadDetail {
+  tenant: { id: string; name: string };
+  messages: PlatformMessage[];
+  unreadCount?: number;
 }

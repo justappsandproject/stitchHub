@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { LoginDto, RegisterStaffDto, RegisterTenantDto } from './dto/auth.dto';
+import { LoginDto, RegisterStaffDto, RegisterTenantDto, ChangePasswordDto } from './dto/auth.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -170,6 +170,10 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    if (user.tenantId) {
+      await this.subscriptions.syncExpiredTrial(user.tenantId);
+    }
+
     return this.buildAuthResponse(user);
   }
 
@@ -209,6 +213,31 @@ export class AuthService {
     }
 
     return this.toAuthUser(user);
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+    await this.prisma.refreshToken.deleteMany({ where: { userId } });
+
+    return { message: 'Password updated successfully' };
   }
 
   private toAuthUser(user: {

@@ -1,9 +1,21 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { Subscription, SubscriptionPlan } from '@prisma/client';
+import { Subscription, SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
 import { PLAN_CONFIG } from '@stitchhub/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 const TRIAL_DAYS = 14;
+
+export class SubscriptionSuspendedException extends ForbiddenException {
+  constructor(message?: string) {
+    super({
+      statusCode: 403,
+      code: 'SUBSCRIPTION_SUSPENDED',
+      message:
+        message ??
+        'Your trial has ended. Please make a payment on the Billing page to continue using StitchHub.',
+    });
+  }
+}
 
 type GatedFeature = 'staffManagement' | 'analytics' | 'multiBranch';
 
@@ -39,8 +51,86 @@ export class SubscriptionsService {
     }));
   }
 
-  async getCurrent(tenantId: string) {
+  /** Sync expired trials → PAST_DUE and suspend tenant access. */
+  async syncExpiredTrial(tenantId: string): Promise<Subscription> {
     const subscription = await this.getOrCreate(tenantId);
+    const now = new Date();
+
+    if (
+      subscription.status === SubscriptionStatus.TRIALING &&
+      subscription.currentPeriodEnd < now
+    ) {
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { isActive: false },
+      });
+      return this.prisma.subscription.update({
+        where: { tenantId },
+        data: { status: SubscriptionStatus.PAST_DUE },
+      });
+    }
+
+    if (
+      subscription.status === SubscriptionStatus.PAST_DUE &&
+      subscription.currentPeriodEnd < now
+    ) {
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { isActive: false },
+      });
+    }
+
+    return subscription;
+  }
+
+  async assertTenantAccess(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { subscription: true },
+    });
+    if (!tenant) throw new SubscriptionSuspendedException();
+
+    if (!tenant.isActive) {
+      throw new SubscriptionSuspendedException(
+        tenant.subscription?.status === SubscriptionStatus.PAST_DUE
+          ? 'Your account is suspended. Go to Billing and pay via Paystack to restore access.'
+          : 'This fashion house account has been deactivated by the platform administrator.',
+      );
+    }
+
+    const subscription = await this.syncExpiredTrial(tenantId);
+    if (
+      subscription.status === SubscriptionStatus.PAST_DUE ||
+      subscription.status === SubscriptionStatus.CANCELLED
+    ) {
+      throw new SubscriptionSuspendedException();
+    }
+  }
+
+  async adminChangePlan(tenantId: string, plan: SubscriptionPlan) {
+    await this.getOrCreate(tenantId);
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { isActive: true },
+    });
+
+    return this.prisma.subscription.update({
+      where: { tenantId },
+      data: {
+        plan,
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+    });
+  }
+
+  async getCurrent(tenantId: string) {
+    const subscription = await this.syncExpiredTrial(tenantId);
     const config = PLAN_CONFIG[subscription.plan];
 
     const startOfMonth = new Date();
@@ -59,17 +149,28 @@ export class SubscriptionsService {
       ...subscription,
       config,
       usage: { customers, ordersThisMonth, measurements },
+      isSuspended:
+        subscription.status === SubscriptionStatus.PAST_DUE ||
+        subscription.status === SubscriptionStatus.CANCELLED,
+      requiresPayment:
+        subscription.status === SubscriptionStatus.PAST_DUE ||
+        (subscription.status === SubscriptionStatus.TRIALING &&
+          subscription.currentPeriodEnd < new Date()),
     };
   }
 
   async changePlan(tenantId: string, plan: SubscriptionPlan) {
     await this.getOrCreate(tenantId);
 
-    // Payment collection (Paystack/Flutterwave) plugs in here; for now the
-    // plan change activates immediately.
+    // Without Paystack configured, activate immediately (dev/demo).
     const now = new Date();
     const periodEnd = new Date(now);
     periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { isActive: true },
+    });
 
     return this.prisma.subscription.update({
       where: { tenantId },
@@ -83,6 +184,7 @@ export class SubscriptionsService {
   }
 
   async assertCanAddCustomer(tenantId: string) {
+    await this.assertTenantAccess(tenantId);
     const subscription = await this.getOrCreate(tenantId);
     const config = PLAN_CONFIG[subscription.plan];
     if (config.maxCustomers == null) return;
@@ -96,6 +198,7 @@ export class SubscriptionsService {
   }
 
   async assertCanCreateOrder(tenantId: string) {
+    await this.assertTenantAccess(tenantId);
     const subscription = await this.getOrCreate(tenantId);
     const config = PLAN_CONFIG[subscription.plan];
     if (config.maxOrdersPerMonth == null) return;
@@ -115,6 +218,7 @@ export class SubscriptionsService {
   }
 
   async assertFeature(tenantId: string, feature: GatedFeature) {
+    await this.assertTenantAccess(tenantId);
     const subscription = await this.getOrCreate(tenantId);
     const config = PLAN_CONFIG[subscription.plan];
     if (!config[feature]) {
