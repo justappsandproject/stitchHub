@@ -6,6 +6,12 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { SubscriptionBanner } from '@/components/layout/subscription-banner';
 import { authApi, type AuthUser } from '@/lib/api';
 import { isSuperAdmin } from '@/lib/auth';
+import {
+  clearSession,
+  getStoredSession,
+  isSessionExpiredError,
+  saveUser,
+} from '@/lib/session';
 
 export default function DashboardLayout({
   children,
@@ -14,48 +20,47 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const stored = localStorage.getItem('user');
-    if (!token || !stored) {
-      router.push('/login');
+    const session = getStoredSession();
+    if (!session) {
+      router.replace('/login?next=/dashboard');
       return;
     }
 
-    const parsed = JSON.parse(stored) as AuthUser;
-    if (isSuperAdmin(parsed.role)) {
-      router.push('/admin');
+    if (isSuperAdmin(session.user.role)) {
+      router.replace('/admin');
       return;
     }
+
+    setUser(session.user);
+    setReady(true);
 
     authApi
-      .getProfile(token)
+      .getProfile()
       .then((profile) => {
         if (isSuperAdmin(profile.role)) {
-          router.push('/admin');
+          router.replace('/admin');
           return;
         }
         setUser(profile);
-        localStorage.setItem('user', JSON.stringify(profile));
+        saveUser(profile);
       })
-      .catch(() => {
-        if (!isSuperAdmin(parsed.role)) {
-          setUser(parsed);
-        } else {
-          router.push('/admin');
+      .catch((error) => {
+        if (isSessionExpiredError(error)) {
+          clearSession();
+          router.replace('/login?next=/dashboard');
         }
       });
   }, [router]);
 
   function handleLogout() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    clearSession();
     router.push('/login');
   }
 
-  if (!user) {
+  if (!ready || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-3 text-muted-foreground">

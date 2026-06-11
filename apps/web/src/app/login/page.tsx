@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { LogoMark } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,13 +17,41 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { authApi } from '@/lib/api';
 import { isSuperAdmin } from '@/lib/auth';
+import { getStoredSession, saveSession } from '@/lib/session';
 
-export default function LoginPage() {
+function resolveNextPath(next: string | null, role: string) {
+  if (next && next.startsWith('/') && !next.startsWith('//')) {
+    if (next.startsWith('/admin') && !isSuperAdmin(role)) {
+      return '/dashboard';
+    }
+    if (next.startsWith('/dashboard') && isSuperAdmin(role)) {
+      return '/admin';
+    }
+    return next;
+  }
+
+  return isSuperAdmin(role) ? '/admin' : '/dashboard';
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const session = getStoredSession();
+    if (session) {
+      router.replace(
+        resolveNextPath(searchParams.get('next'), session.user.role),
+      );
+      return;
+    }
+    setCheckingSession(false);
+  }, [router, searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,16 +60,22 @@ export default function LoginPage() {
 
     try {
       const res = await authApi.login(email, password);
-      localStorage.setItem('accessToken', res.accessToken);
-      localStorage.setItem('refreshToken', res.refreshToken);
-      localStorage.setItem('user', JSON.stringify(res.user));
-      router.push(isSuperAdmin(res.user.role) ? '/admin' : '/dashboard');
+      saveSession(res);
+      router.replace(resolveNextPath(searchParams.get('next'), res.user.role));
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
       setError(apiErr.message ?? 'Login failed');
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <p className="text-sm text-muted-foreground">Checking session...</p>
+      </div>
+    );
   }
 
   return (
@@ -94,5 +128,19 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background p-6">
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

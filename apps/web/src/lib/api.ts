@@ -3,9 +3,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1
 export interface ApiError {
   message: string;
   statusCode: number;
+  code?: string;
 }
 
-function clearSession() {
+function clearSessionStorage() {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
@@ -81,10 +83,12 @@ export async function api<T>(
     if (newToken) {
       res = await rawFetch(path, fetchOptions, newToken);
     } else {
-      clearSession();
-      window.location.href = '/login';
-      // Halt callers while the redirect happens.
-      return new Promise<never>(() => {});
+      clearSessionStorage();
+      throw {
+        message: 'Session expired',
+        statusCode: 401,
+        code: 'SESSION_EXPIRED',
+      } satisfies ApiError;
     }
   }
 
@@ -112,8 +116,7 @@ export const authApi = {
       { method: 'POST', body: JSON.stringify(data) },
     ),
 
-  getProfile: (token: string) =>
-    api<AuthUser>('/auth/me', { token }),
+  getProfile: () => api<AuthUser>('/auth/me'),
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api<{ message: string }>('/auth/password', {
