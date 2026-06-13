@@ -11,6 +11,8 @@ class UserEntity extends Equatable {
     this.tenantId,
     this.fashionHouseName,
     this.customerId,
+    this.phone,
+    this.photoUrl,
   });
 
   final String id;
@@ -21,12 +23,14 @@ class UserEntity extends Equatable {
   final String? tenantId;
   final String? fashionHouseName;
   final String? customerId;
+  final String? phone;
+  final String? photoUrl;
 
   String get fullName => '$firstName $lastName'.trim();
 
   @override
   List<Object?> get props =>
-      [id, email, role, firstName, lastName, tenantId, fashionHouseName];
+      [id, email, role, firstName, lastName, tenantId, fashionHouseName, phone, photoUrl];
 }
 
 class AuthSession extends Equatable {

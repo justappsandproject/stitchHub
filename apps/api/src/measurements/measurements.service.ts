@@ -1,4 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { assertCustomerResource } from '../common/utils/customer-scope';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateMeasurementDto,
@@ -61,7 +64,15 @@ export class MeasurementsService {
     });
   }
 
-  async findByCustomer(tenantId: string, customerId: string) {
+  async findByCustomer(
+    tenantId: string,
+    customerId: string,
+    user?: JwtPayload,
+  ) {
+    if (user?.role === UserRole.CUSTOMER) {
+      await assertCustomerResource(this.prisma, user, customerId);
+    }
+
     return this.prisma.measurement.findMany({
       where: { tenantId, customerId },
       orderBy: { createdAt: 'desc' },
@@ -72,7 +83,16 @@ export class MeasurementsService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findMine(tenantId: string, user: JwtPayload) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { userId: user.sub },
+      select: { id: true },
+    });
+    if (!customer) throw new NotFoundException('Customer profile not found');
+    return this.findByCustomer(tenantId, customer.id, user);
+  }
+
+  async findOne(tenantId: string, id: string, user?: JwtPayload) {
     const measurement = await this.prisma.measurement.findFirst({
       where: { id, tenantId },
       include: {
@@ -84,6 +104,10 @@ export class MeasurementsService {
 
     if (!measurement) {
       throw new NotFoundException('Measurement not found');
+    }
+
+    if (user?.role === UserRole.CUSTOMER) {
+      await assertCustomerResource(this.prisma, user, measurement.customerId);
     }
 
     return measurement;

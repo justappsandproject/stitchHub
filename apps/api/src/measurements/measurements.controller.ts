@@ -81,13 +81,29 @@ export class MeasurementsController {
     @Param('customerId') customerId: string,
   ) {
     const tenantId = resolveTenantId(user);
-    return this.measurementsService.findByCustomer(tenantId, customerId);
+    return this.measurementsService.findByCustomer(tenantId, customerId, user);
+  }
+
+  @Get('me')
+  @Roles(UserRole.CUSTOMER)
+  findMine(@CurrentUser() user: JwtPayload) {
+    const tenantId = resolveTenantId(user);
+    return this.measurementsService.findMine(tenantId, user);
   }
 
   @Get(':id')
+  @Roles(
+    UserRole.TENANT_OWNER,
+    UserRole.MANAGER,
+    UserRole.TAILOR,
+    UserRole.CUTTER,
+    UserRole.FINISHER,
+    UserRole.APPRENTICE,
+    UserRole.CUSTOMER,
+  )
   findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     const tenantId = resolveTenantId(user);
-    return this.measurementsService.findOne(tenantId, id);
+    return this.measurementsService.findOne(tenantId, id, user);
   }
 
   @Patch(':id')

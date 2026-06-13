@@ -179,6 +179,7 @@ model User {
   firstName    String    @map("first_name")
   lastName     String    @map("last_name")
   phone        String?
+  photoUrl     String?   @map("photo_url")
   role         UserRole
   isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
@@ -187,6 +188,8 @@ model User {
 
   tenant        Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  deviceTokens      DeviceToken[]
   customer      Customer?
   assignedOrders Order[]       @relation("AssignedWorker")
   auditLogs     AuditLog[]
@@ -208,6 +211,35 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String
+  platform  String   @default("android")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@map("device_tokens")
 }
 
 // ─── Customer Management ─────────────────────────────────────────────────────

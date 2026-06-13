@@ -10,9 +10,13 @@ import { AuthService } from './auth.service';
 import {
   LoginDto,
   RefreshTokenDto,
+  RegisterCustomerDto,
   RegisterStaffDto,
   RegisterTenantDto,
   ChangePasswordDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
@@ -25,6 +29,11 @@ export class AuthController {
   @Post('register/tenant')
   registerTenant(@Body() dto: RegisterTenantDto) {
     return this.authService.registerTenant(dto);
+  }
+
+  @Post('register/customer')
+  registerCustomer(@Body() dto: RegisterCustomerDto) {
+    return this.authService.registerCustomer(dto);
   }
 
   @Post('register/staff')
@@ -61,6 +70,26 @@ export class AuthController {
   @ApiBearerAuth()
   getProfile(@CurrentUser() user: JwtPayload) {
     return this.authService.getProfile(user.sub);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  updateProfile(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(user.sub, dto);
+  }
+
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
   @Patch('password')

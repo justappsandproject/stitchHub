@@ -17,7 +17,12 @@
     "db:migrate": "pnpm --filter @stitchhub/api db:migrate",
     "db:push": "pnpm --filter @stitchhub/api db:push",
     "db:seed": "pnpm --filter @stitchhub/api db:seed",
-    "dev:mobile": "pnpm --filter @stitchhub/shared build && cd apps/mobile && flutter run"
+    "dev:mobile": "pnpm --filter @stitchhub/shared build && cd apps/mobile && flutter run",
+    "dev:mobile:android": "bash scripts/dev-mobile-android.sh",
+    "build:mobile:apk": "cd apps/mobile && flutter build apk --release",
+    "build:mobile:apk:debug": "cd apps/mobile && flutter build apk --debug",
+    "install:mobile:android": "bash scripts/install-mobile-android.sh debug",
+    "install:mobile:android:release": "bash scripts/install-mobile-android.sh release"
   },
   "engines": {
     "node": ">=20.0.0",

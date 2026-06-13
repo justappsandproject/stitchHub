@@ -88,6 +88,12 @@ Future<void> initDependencies({String? apiBaseUrl}) async {
     ..registerLazySingleton<AdminRepository>(
       () => AdminRepositoryImpl(sl()),
     )
+    ..registerLazySingleton<UploadsRepository>(
+      () => UploadsRepositoryImpl(sl()),
+    )
+    ..registerLazySingleton<MeasurementsRepository>(
+      () => MeasurementsRepositoryImpl(sl()),
+    )
     ..registerLazySingleton<PaystackService>(() => PaystackService(sl()))
     ..registerLazySingleton<SyncManager>(
       () => SyncManager(
@@ -97,7 +103,7 @@ Future<void> initDependencies({String? apiBaseUrl}) async {
       ),
     )
     ..registerLazySingleton<PushNotificationService>(
-      () => PushNotificationService(sl()),
+      () => PushNotificationService(sl(), sl()),
     )
     ..registerFactory(() => AuthBloc(sl()))
     ..registerFactory(() => OrdersBloc(sl()))

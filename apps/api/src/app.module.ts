@@ -10,6 +10,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { MessagesModule } from './messages/messages.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { MessagesModule } from './messages/messages.module';
     DashboardModule,
     SubscriptionsModule,
     MessagesModule,
+    NotificationsModule,
+    UploadsModule,
   ],
 })
 export class AppModule {}

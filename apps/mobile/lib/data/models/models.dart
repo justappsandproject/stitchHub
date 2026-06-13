@@ -14,6 +14,8 @@ class UserModel extends UserEntity {
     super.tenantId,
     super.fashionHouseName,
     super.customerId,
+    super.phone,
+    super.photoUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -24,7 +26,10 @@ class UserModel extends UserEntity {
         lastName: json['lastName'] as String? ?? '',
         tenantId: json['tenantId'] as String?,
         fashionHouseName: json['fashionHouseName'] as String?,
-        customerId: (json['customer'] as Map<String, dynamic>?)?['id'] as String?,
+        customerId: json['customerId'] as String? ??
+            (json['customer'] as Map<String, dynamic>?)?['id'] as String?,
+        phone: json['phone'] as String?,
+        photoUrl: json['photoUrl'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +40,8 @@ class UserModel extends UserEntity {
         'lastName': lastName,
         'tenantId': tenantId,
         'fashionHouseName': fashionHouseName,
+        'phone': phone,
+        'photoUrl': photoUrl,
       };
 
   String toJsonString() => jsonEncode(toJson());
@@ -85,6 +92,7 @@ class CustomerModel extends CustomerEntity {
     required super.phone,
     super.email,
     super.isVip,
+    super.photoUrl,
   });
 
   factory CustomerModel.fromJson(Map<String, dynamic> json) => CustomerModel(
@@ -94,6 +102,7 @@ class CustomerModel extends CustomerEntity {
         phone: json['phone'] as String? ?? '',
         email: json['email'] as String?,
         isVip: json['isVip'] as bool? ?? false,
+        photoUrl: json['photoUrl'] as String?,
       );
 }
 
@@ -161,4 +170,74 @@ class SubscriptionModel extends SubscriptionEntity {
         isSuspended: json['isSuspended'] as bool? ?? false,
         requiresPayment: json['requiresPayment'] as bool? ?? false,
       );
+}
+
+class MeasurementFieldModel extends MeasurementFieldEntity {
+  const MeasurementFieldModel({
+    required super.key,
+    required super.label,
+    required super.unit,
+  });
+
+  factory MeasurementFieldModel.fromJson(Map<String, dynamic> json) =>
+      MeasurementFieldModel(
+        key: json['key'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        unit: json['unit'] as String? ?? '',
+      );
+}
+
+class MeasurementTemplateModel extends MeasurementTemplateEntity {
+  const MeasurementTemplateModel({
+    required super.id,
+    required super.name,
+    required super.category,
+    required super.fields,
+  });
+
+  factory MeasurementTemplateModel.fromJson(Map<String, dynamic> json) {
+    final rawFields = json['fields'] as List<dynamic>? ?? [];
+    return MeasurementTemplateModel(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      category: json['category'] as String? ?? '',
+      fields: rawFields
+          .cast<Map<String, dynamic>>()
+          .map(MeasurementFieldModel.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class MeasurementModel extends MeasurementEntity {
+  const MeasurementModel({
+    required super.id,
+    required super.version,
+    required super.values,
+    required super.templateName,
+    required super.fields,
+    required super.createdAt,
+    super.notes,
+    super.templateId,
+    super.customerId,
+  });
+
+  factory MeasurementModel.fromJson(Map<String, dynamic> json) {
+    final template = json['template'] as Map<String, dynamic>? ?? {};
+    final rawFields = template['fields'] as List<dynamic>? ?? [];
+    return MeasurementModel(
+      id: json['id'] as String,
+      version: json['version'] as int? ?? 1,
+      values: Map<String, dynamic>.from(json['values'] as Map? ?? {}),
+      templateName: template['name'] as String? ?? 'Measurement',
+      fields: rawFields
+          .cast<Map<String, dynamic>>()
+          .map(MeasurementFieldModel.fromJson)
+          .toList(),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      notes: json['notes'] as String?,
+      templateId: template['id'] as String? ?? json['templateId'] as String?,
+      customerId: json['customerId'] as String?,
+    );
+  }
 }

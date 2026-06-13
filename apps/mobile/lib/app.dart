@@ -37,6 +37,7 @@ class _StitchHubAppState extends State<StitchHubApp> {
       _authRefresh.update(state);
       if (state is AuthAuthenticated) {
         sl<SyncBloc>().add(const SyncNowRequested());
+        sl<PushNotificationService>().syncTokenWithApi();
       }
     });
   }

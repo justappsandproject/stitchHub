@@ -132,6 +132,55 @@ export class DashboardService {
     };
   }
 
+  async getCustomerDashboard(tenantId: string, customerId: string) {
+    const [
+      totalOrders,
+      activeOrders,
+      deliveredOrders,
+      outstandingAgg,
+      recentOrders,
+    ] = await Promise.all([
+      this.prisma.order.count({ where: { tenantId, customerId } }),
+      this.prisma.order.count({
+        where: {
+          tenantId,
+          customerId,
+          status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED] },
+        },
+      }),
+      this.prisma.order.count({
+        where: { tenantId, customerId, status: OrderStatus.DELIVERED },
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          tenantId,
+          customerId,
+          balanceAmount: { gt: 0 },
+          status: { not: OrderStatus.CANCELLED },
+        },
+        _sum: { balanceAmount: true },
+      }),
+      this.prisma.order.findMany({
+        where: { tenantId, customerId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: {
+          style: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    return {
+      summary: {
+        totalOrders,
+        activeOrders,
+        deliveredOrders,
+        outstandingBalance: Number(outstandingAgg._sum.balanceAmount ?? 0),
+      },
+      recentOrders,
+    };
+  }
+
   async getDashboard(user: JwtPayload) {
     if (user.role === UserRole.SUPER_ADMIN) {
       return this.getSuperAdminDashboard();
@@ -139,6 +188,17 @@ export class DashboardService {
 
     if (!user.tenantId) {
       return { message: 'No tenant associated with user' };
+    }
+
+    if (user.role === UserRole.CUSTOMER) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { userId: user.sub },
+        select: { id: true },
+      });
+      if (!customer) {
+        return { message: 'No customer profile linked' };
+      }
+      return this.getCustomerDashboard(user.tenantId, customer.id);
     }
 
     return this.getTenantDashboard(user.tenantId);

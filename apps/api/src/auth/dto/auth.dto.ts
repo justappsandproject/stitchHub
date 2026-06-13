@@ -102,3 +102,91 @@ export class ChangePasswordDto {
   @MinLength(8)
   newPassword: string;
 }
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: 'owner@atelier.com' })
+  @IsEmail()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
+}
+
+export class RegisterDeviceTokenDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @ApiPropertyOptional({ example: 'android' })
+  @IsOptional()
+  @IsString()
+  platform?: string;
+}
+
+export class RegisterCustomerDto {
+  @ApiProperty({ example: 'elegant-stitches' })
+  @IsString()
+  @IsNotEmpty()
+  tenantSlug: string;
+
+  @ApiProperty({ example: 'chidi@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'customer1234' })
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @ApiProperty({ example: 'Chidi' })
+  @IsString()
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty({ example: 'Eze' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @ApiProperty({ example: '+2348098765432' })
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+}

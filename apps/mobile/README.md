@@ -119,15 +119,47 @@ Fashion house owners can upgrade plans from **Billing**:
 
 ## Known API gaps
 
-- Customer self-registration/login endpoint not yet on API (CUSTOMER role exists in schema)
 - Style catalog has no REST endpoints yet
 - Order Paystack checkout is manual payment recording only (subscription uses Paystack)
+- Password reset not implemented in mobile
+- Image upload not implemented in mobile
+- FCM token is cached locally but not yet registered with the API
+- Customer measurements screen exists on web only (not mobile yet)
+
+## Build test APKs
+
+```bash
+cd apps/mobile
+flutter clean
+flutter pub get
+flutter build apk --debug    # test APK for physical devices
+flutter build apk --release  # smaller release APK
+```
+
+**APK locations:**
+
+- Debug: `build/app/outputs/flutter-apk/app-debug.apk`
+- Release: `build/app/outputs/flutter-apk/app-release.apk`
+
+**Install on a physical device (USB debugging enabled):**
+
+```bash
+# From repo root
+pnpm install:mobile:android          # installs debug APK
+pnpm install:mobile:android:release  # installs release APK
+
+# Or manually
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Copy the APK to your phone and open it if you prefer sideloading without USB.
 
 ## Scripts
 
 ```bash
 flutter analyze
 flutter test
-flutter build apk
+flutter build apk --debug
+flutter build apk --release
 flutter build ios
 ```

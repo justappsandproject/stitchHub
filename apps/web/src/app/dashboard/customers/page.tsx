@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { api } from '@/lib/api';
+import { api, uploadFile } from '@/lib/api';
 
 interface Customer {
   id: string;
@@ -45,6 +45,7 @@ const emptyForm = {
   notes: '',
   isVip: false,
   tags: '',
+  photoUrl: '',
 };
 
 export default function CustomersPage() {
@@ -94,6 +95,7 @@ export default function CustomersPage() {
           address: form.address || undefined,
           notes: form.notes || undefined,
           isVip: form.isVip,
+          photoUrl: form.photoUrl || undefined,
           tags: form.tags
             ? form.tags.split(',').map((t) => t.trim()).filter(Boolean)
             : [],
@@ -212,6 +214,20 @@ export default function CustomersPage() {
                 {error}
               </div>
             )}
+            <div className="space-y-2">
+              <Label htmlFor="photo">Photo</Label>
+              <Input
+                id="photo"
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const uploaded = await uploadFile(file);
+                  update('photoUrl', uploaded.url);
+                }}
+              />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>

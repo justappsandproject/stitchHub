@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { OrderStatus, Prisma, UserRole } from '@prisma/client';
 import { ORDER_STATUS_PROGRESS } from '@stitchhub/shared';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { resolveCustomerId } from '../common/utils/customer-scope';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
@@ -61,11 +63,19 @@ export class OrdersService {
     });
   }
 
-  async findAll(tenantId: string, query: OrderQueryDto) {
+  async findAll(tenantId: string, query: OrderQueryDto, user?: JwtPayload) {
     const where: Prisma.OrderWhereInput = { tenantId };
 
-    if (query.status) where.status = query.status;
-    if (query.customerId) where.customerId = query.customerId;
+    if (user?.role === UserRole.CUSTOMER) {
+      const customerId = await resolveCustomerId(this.prisma, user);
+      if (!customerId) {
+        throw new ForbiddenException('No customer profile linked to this account');
+      }
+      where.customerId = customerId;
+    } else {
+      if (query.status) where.status = query.status;
+      if (query.customerId) where.customerId = query.customerId;
+    }
 
     const orders = await this.prisma.order.findMany({
       where,
@@ -108,7 +118,7 @@ export class OrdersService {
     return columns;
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, user?: JwtPayload) {
     const order = await this.prisma.order.findFirst({
       where: { id, tenantId },
       include: {
@@ -121,6 +131,13 @@ export class OrdersService {
     });
 
     if (!order) throw new NotFoundException('Order not found');
+
+    if (user?.role === UserRole.CUSTOMER) {
+      const customerId = await resolveCustomerId(this.prisma, user);
+      if (order.customerId !== customerId) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
 
     return {
       ...order,

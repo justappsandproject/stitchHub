@@ -28,6 +28,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       case 1:
         context.go(AppRouter.customerOrders);
       case 2:
+        context.go(AppRouter.customerMeasurements);
+      case 3:
         context.go(AppRouter.settings);
     }
   }
@@ -64,6 +66,11 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                   FilledButton(
                     onPressed: () => context.go(AppRouter.customerOrders),
                     child: const Text('View my orders'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () => context.go(AppRouter.customerMeasurements),
+                    child: const Text('View my measurements'),
                   ),
                 ],
               ),

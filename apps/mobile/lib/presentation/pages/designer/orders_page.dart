@@ -100,6 +100,8 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
       case 1:
         context.go(AppRouter.customerOrders);
       case 2:
+        context.go(AppRouter.customerMeasurements);
+      case 3:
         context.go(AppRouter.settings);
     }
   }

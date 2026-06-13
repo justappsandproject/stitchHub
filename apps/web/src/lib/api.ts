@@ -103,6 +103,28 @@ export async function api<T>(
   return res.json();
 }
 
+export async function uploadFile(file: File): Promise<{ url: string; filename: string }> {
+  const token = typeof window !== 'undefined'
+    ? localStorage.getItem('accessToken') ?? undefined
+    : undefined;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${API_URL}/uploads`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }));
+    throw error;
+  }
+
+  return res.json();
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     api<{ accessToken: string; refreshToken: string; user: AuthUser }>(
@@ -116,7 +138,37 @@ export const authApi = {
       { method: 'POST', body: JSON.stringify(data) },
     ),
 
+  registerCustomer: (data: RegisterCustomerData) =>
+    api<{ accessToken: string; refreshToken: string; user: AuthUser }>(
+      '/auth/register/customer',
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+
   getProfile: () => api<AuthUser>('/auth/me'),
+
+  updateProfile: (data: Partial<AuthUser>) =>
+    api<AuthUser>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  forgotPassword: (email: string) =>
+    api<{ message: string; resetToken?: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    api<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    }),
+
+  registerDeviceToken: (token: string, platform = 'web') =>
+    api<{ message: string }>('/notifications/device-token', {
+      method: 'POST',
+      body: JSON.stringify({ token, platform }),
+    }),
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api<{ message: string }>('/auth/password', {
@@ -199,6 +251,15 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   fashionHouseName: string | null;
+  phone?: string | null;
+  photoUrl?: string | null;
+  customerId?: string | null;
+  customer?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+  } | null;
 }
 
 export interface RegisterTenantData {
@@ -211,13 +272,22 @@ export interface RegisterTenantData {
   phone?: string;
 }
 
+export interface RegisterCustomerData {
+  tenantSlug: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
 export interface DashboardData {
   summary: {
-    totalCustomers: number;
+    totalCustomers?: number;
     totalOrders: number;
     activeOrders: number;
     deliveredOrders: number;
-    totalRevenue: number;
+    totalRevenue?: number;
     outstandingBalance: number;
   };
   ordersByStatus?: { status: string; count: number }[];
@@ -226,7 +296,9 @@ export interface DashboardData {
     orderNumber: string;
     status: string;
     totalAmount: number;
-    customer: { firstName: string; lastName: string };
+    balanceAmount?: number;
+    customer?: { firstName: string; lastName: string };
+    style?: { name: string } | null;
   }>;
 }
 

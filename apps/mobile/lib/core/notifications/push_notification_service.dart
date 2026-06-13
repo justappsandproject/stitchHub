@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:stitchhub_mobile/core/storage/secure_storage.dart';
+import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/firebase_options.dart';
 
 @pragma('vm:entry-point')
@@ -11,9 +12,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushNotificationService {
-  PushNotificationService(this._storage);
+  PushNotificationService(this._storage, this._authRepository);
 
   final SecureStorage _storage;
+  final AuthRepository _authRepository;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -45,10 +47,14 @@ class PushNotificationService {
       final token = await _messaging.getToken();
       if (token != null) {
         await _storage.saveFcmToken(token);
+        await _registerTokenWithApi(token);
       }
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
-      _messaging.onTokenRefresh.listen(_storage.saveFcmToken);
+      _messaging.onTokenRefresh.listen((token) async {
+        await _storage.saveFcmToken(token);
+        await _registerTokenWithApi(token);
+      });
 
       _initialized = true;
     } catch (e) {
@@ -77,4 +83,19 @@ class PushNotificationService {
   }
 
   String? get cachedToken => _storage.readFcmToken();
+
+  Future<void> syncTokenWithApi() async {
+    final token = _storage.readFcmToken();
+    if (token != null) {
+      await _registerTokenWithApi(token);
+    }
+  }
+
+  Future<void> _registerTokenWithApi(String token) async {
+    try {
+      await _authRepository.registerDeviceToken(token);
+    } catch (e) {
+      debugPrint('FCM token registration skipped: $e');
+    }
+  }
 }

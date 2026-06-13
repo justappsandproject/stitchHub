@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,7 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { LoginDto, RegisterStaffDto, RegisterTenantDto, ChangePasswordDto } from './dto/auth.dto';
+import { LoginDto, RegisterCustomerDto, RegisterStaffDto, RegisterTenantDto, ChangePasswordDto, UpdateProfileDto } from './dto/auth.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
@@ -150,10 +151,90 @@ export class AuthService {
     return this.sanitizeUser(user);
   }
 
+  async registerCustomer(dto: RegisterCustomerDto) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: dto.tenantSlug },
+    });
+    if (!tenant || !tenant.isActive) {
+      throw new NotFoundException('Fashion house not found');
+    }
+
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existingEmail) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const existingCustomer = await this.prisma.customer.findUnique({
+      where: {
+        tenantId_phone: { tenantId: tenant.id, phone: dto.phone },
+      },
+    });
+
+    if (existingCustomer?.userId) {
+      throw new ConflictException(
+        'This phone number is already registered with this fashion house',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          email: dto.email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone,
+          role: UserRole.CUSTOMER,
+        },
+      });
+
+      if (existingCustomer) {
+        await tx.customer.update({
+          where: { id: existingCustomer.id },
+          data: {
+            userId: createdUser.id,
+            email: dto.email,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+          },
+        });
+      } else {
+        await tx.customer.create({
+          data: {
+            tenantId: tenant.id,
+            userId: createdUser.id,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            phone: dto.phone,
+            email: dto.email,
+          },
+        });
+      }
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: createdUser.id },
+        include: {
+          tenant: { select: { name: true } },
+          customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        },
+      });
+    });
+
+    return this.buildAuthResponse(user);
+  }
+
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      include: { tenant: { select: { name: true } } },
+      include: {
+        tenant: { select: { name: true } },
+        customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
+      },
     });
 
     if (!user || !user.isActive) {
@@ -181,7 +262,7 @@ export class AuthService {
     const stored = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
       include: {
-        user: { include: { tenant: { select: { name: true } } } },
+        user: { include: { tenant: { select: { name: true } }, customer: { select: { id: true, firstName: true, lastName: true, phone: true } } } },
       },
     });
 
@@ -213,6 +294,120 @@ export class AuthService {
     }
 
     return this.toAuthUser(user);
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { customer: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (existing) {
+        throw new ConflictException('Email already in use');
+      }
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const nextUser = await tx.user.update({
+        where: { id: userId },
+        data: {
+          firstName: dto.firstName ?? undefined,
+          lastName: dto.lastName ?? undefined,
+          phone: dto.phone ?? undefined,
+          email: dto.email ?? undefined,
+          photoUrl: dto.photoUrl ?? undefined,
+        },
+        include: {
+          tenant: { select: { id: true, name: true, slug: true } },
+          customer: true,
+        },
+      });
+
+      if (nextUser.customer) {
+        await tx.customer.update({
+          where: { id: nextUser.customer.id },
+          data: {
+            firstName: dto.firstName ?? undefined,
+            lastName: dto.lastName ?? undefined,
+            phone: dto.phone ?? undefined,
+            email: dto.email ?? undefined,
+            photoUrl: dto.photoUrl ?? undefined,
+          },
+        });
+      }
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: {
+          tenant: { select: { id: true, name: true, slug: true } },
+          customer: true,
+        },
+      });
+    });
+
+    return this.toAuthUser(updated);
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return {
+        message:
+          'If an account exists for that email, password reset instructions have been sent.',
+      };
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    await this.prisma.passwordResetToken.create({
+      data: { userId: user.id, token, expiresAt },
+    });
+
+    const response: Record<string, string> = {
+      message:
+        'If an account exists for that email, password reset instructions have been sent.',
+    };
+
+    if (this.configService.get<string>('NODE_ENV') !== 'production') {
+      response.resetToken = token;
+    }
+
+    return response;
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const reset = await this.prisma.passwordResetToken.findUnique({
+      where: { token },
+    });
+
+    if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: reset.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: reset.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshToken.deleteMany({ where: { userId: reset.userId } }),
+    ]);
+
+    return { message: 'Password reset successfully' };
   }
 
   async changePassword(
@@ -247,7 +442,10 @@ export class AuthService {
     tenantId: string | null;
     firstName: string;
     lastName: string;
-    tenant?: { name: string } | null;
+    phone?: string | null;
+    photoUrl?: string | null;
+    tenant?: { id?: string; name: string; slug?: string } | null;
+    customer?: { id: string; firstName: string; lastName: string; phone: string } | null;
   }) {
     return {
       id: user.id,
@@ -256,7 +454,16 @@ export class AuthService {
       tenantId: user.tenantId,
       firstName: user.firstName,
       lastName: user.lastName,
+      phone: user.phone ?? null,
+      photoUrl: user.photoUrl ?? null,
       fashionHouseName: user.tenant?.name ?? null,
+      customerId: user.customer?.id ?? null,
+      customer: user.customer ?? null,
+      tenant: user.tenant?.slug
+        ? { id: user.tenant.id, name: user.tenant.name, slug: user.tenant.slug }
+        : user.tenant?.name
+          ? { name: user.tenant.name }
+          : null,
     };
   }
 
@@ -268,6 +475,7 @@ export class AuthService {
     firstName: string;
     lastName: string;
     tenant?: { name: string } | null;
+    customer?: { id: string; firstName: string; lastName: string; phone: string } | null;
   }) {
     let fashionHouseName = user.tenant?.name ?? null;
 
@@ -292,15 +500,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fashionHouseName,
-      },
+      user: this.toAuthUser(user),
     };
   }
 

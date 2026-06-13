@@ -144,6 +144,22 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> uploadFile(String path, String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _dio.post<Map<String, dynamic>>(
+        path,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return _unwrap(response.data);
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   Map<String, dynamic> _unwrap(Map<String, dynamic>? data) =>
       data ?? <String, dynamic>{};
 

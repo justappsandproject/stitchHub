@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { SubscriptionBanner } from '@/components/layout/subscription-banner';
 import { authApi, type AuthUser } from '@/lib/api';
-import { isSuperAdmin } from '@/lib/auth';
+import { isSuperAdmin, isCustomer } from '@/lib/auth';
 import {
   clearSession,
   getStoredSession,
@@ -34,6 +34,11 @@ export default function DashboardLayout({
       return;
     }
 
+    if (isCustomer(session.user.role)) {
+      router.replace('/customer');
+      return;
+    }
+
     setUser(session.user);
     setReady(true);
 
@@ -42,6 +47,10 @@ export default function DashboardLayout({
       .then((profile) => {
         if (isSuperAdmin(profile.role)) {
           router.replace('/admin');
+          return;
+        }
+        if (isCustomer(profile.role)) {
+          router.replace('/customer');
           return;
         }
         setUser(profile);

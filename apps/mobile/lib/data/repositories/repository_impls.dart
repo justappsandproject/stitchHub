@@ -30,6 +30,29 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<AuthSession> registerCustomer({
+    required String tenantSlug,
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String phone,
+  }) async {
+    final json = await _apiClient.post(
+      '/auth/register/customer',
+      data: {
+        'tenantSlug': tenantSlug,
+        'email': email,
+        'password': password,
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': phone,
+      },
+    );
+    return _persistSession(json);
+  }
+
+  @override
   Future<AuthSession?> restoreSession() async {
     final accessToken = await _secureStorage.readAccessToken();
     final refreshToken = await _secureStorage.readRefreshToken();
@@ -68,6 +91,35 @@ class AuthRepositoryImpl implements AuthRepository {
     final user = UserModel.fromJson(json);
     await _secureStorage.saveUserJson(user.toJsonString());
     return user;
+  }
+
+  @override
+  Future<UserEntity> updateProfile(Map<String, dynamic> data) async {
+    final json = await _apiClient.patch('/auth/me', data: data);
+    final user = UserModel.fromJson(json);
+    await _secureStorage.saveUserJson(user.toJsonString());
+    return user;
+  }
+
+  @override
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    return _apiClient.post('/auth/forgot-password', data: {'email': email});
+  }
+
+  @override
+  Future<void> resetPassword(String token, String newPassword) async {
+    await _apiClient.post(
+      '/auth/reset-password',
+      data: {'token': token, 'newPassword': newPassword},
+    );
+  }
+
+  @override
+  Future<void> registerDeviceToken(String token, {String platform = 'android'}) async {
+    await _apiClient.post(
+      '/notifications/device-token',
+      data: {'token': token, 'platform': platform},
+    );
   }
 
   @override
@@ -283,13 +335,38 @@ class DashboardRepositoryImpl implements DashboardRepository {
       );
     }
 
+    if (summary.containsKey('totalCustomers')) {
+      return DashboardSummary(
+        title: 'Atelier Dashboard',
+        stats: [
+          DashboardStat(label: 'Customers', value: summary['totalCustomers'] ?? 0),
+          DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
+          DashboardStat(label: 'Active Orders', value: summary['activeOrders'] ?? 0),
+          DashboardStat(
+            label: 'Revenue',
+            value: summary['totalRevenue'] ?? 0,
+            isCurrency: true,
+          ),
+          DashboardStat(
+            label: 'Outstanding',
+            value: summary['outstandingBalance'] ?? 0,
+            isCurrency: true,
+          ),
+        ],
+      );
+    }
+
     return DashboardSummary(
-      title: 'Atelier Dashboard',
+      title: 'My Orders',
       stats: [
-        DashboardStat(label: 'Customers', value: summary['totalCustomers'] ?? 0),
+        DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
         DashboardStat(label: 'Active Orders', value: summary['activeOrders'] ?? 0),
-        DashboardStat(label: 'Revenue (month)', value: summary['monthlyRevenue'] ?? 0, isCurrency: true),
-        DashboardStat(label: 'Pending Payments', value: summary['pendingPayments'] ?? 0, isCurrency: true),
+        DashboardStat(label: 'Delivered', value: summary['deliveredOrders'] ?? 0),
+        DashboardStat(
+          label: 'Balance Due',
+          value: summary['outstandingBalance'] ?? 0,
+          isCurrency: true,
+        ),
       ],
     );
   }
@@ -428,5 +505,65 @@ class AdminRepositoryImpl implements AdminRepository {
       if (isActive != null) 'isActive': isActive,
       if (plan != null) 'plan': plan,
     });
+  }
+}
+
+class UploadsRepositoryImpl implements UploadsRepository {
+  UploadsRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<String> uploadImage(String filePath) async {
+    final json = await _apiClient.uploadFile('/uploads', filePath);
+    return json['url'] as String;
+  }
+}
+
+class MeasurementsRepositoryImpl implements MeasurementsRepository {
+  MeasurementsRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<List<MeasurementTemplateEntity>> getTemplates() async {
+    final list = await _apiClient.getList('/measurements/templates');
+    return list
+        .cast<Map<String, dynamic>>()
+        .map(MeasurementTemplateModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<MeasurementEntity>> getByCustomer(String customerId) async {
+    final list = await _apiClient.getList('/measurements/customer/$customerId');
+    return list
+        .cast<Map<String, dynamic>>()
+        .map(MeasurementModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<List<MeasurementEntity>> getMine() async {
+    final list = await _apiClient.getList('/measurements/me');
+    return list
+        .cast<Map<String, dynamic>>()
+        .map(MeasurementModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<MeasurementEntity> createMeasurement(Map<String, dynamic> data) async {
+    final json = await _apiClient.post('/measurements', data: data);
+    return MeasurementModel.fromJson(json);
+  }
+
+  @override
+  Future<MeasurementEntity> updateMeasurement(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    final json = await _apiClient.patch('/measurements/$id', data: data);
+    return MeasurementModel.fromJson(json);
   }
 }

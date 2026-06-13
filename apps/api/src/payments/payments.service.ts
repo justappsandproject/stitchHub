@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   InvoiceStatus,
   PaymentStatus,
   Prisma,
+  UserRole,
 } from '@prisma/client';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { resolveCustomerId } from '../common/utils/customer-scope';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvoiceDto, CreatePaymentDto } from './dto/payment.dto';
 
@@ -45,9 +48,17 @@ export class PaymentsService {
     });
   }
 
-  async findInvoices(tenantId: string, orderId?: string) {
+  async findInvoices(tenantId: string, orderId?: string, user?: JwtPayload) {
     const where: Prisma.InvoiceWhereInput = { tenantId };
     if (orderId) where.orderId = orderId;
+
+    if (user?.role === UserRole.CUSTOMER) {
+      const customerId = await resolveCustomerId(this.prisma, user);
+      if (!customerId) {
+        throw new ForbiddenException('No customer profile linked to this account');
+      }
+      where.order = { customerId };
+    }
 
     return this.prisma.invoice.findMany({
       where,
@@ -143,9 +154,19 @@ export class PaymentsService {
     });
   }
 
-  async findReceipts(tenantId: string) {
+  async findReceipts(tenantId: string, user?: JwtPayload) {
+    const where: Prisma.ReceiptWhereInput = { tenantId };
+
+    if (user?.role === UserRole.CUSTOMER) {
+      const customerId = await resolveCustomerId(this.prisma, user);
+      if (!customerId) {
+        throw new ForbiddenException('No customer profile linked to this account');
+      }
+      where.payment = { invoice: { order: { customerId } } };
+    }
+
     return this.prisma.receipt.findMany({
-      where: { tenantId },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         payment: {

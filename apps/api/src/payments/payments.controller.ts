@@ -40,7 +40,7 @@ export class PaymentsController {
     @Query('orderId') orderId?: string,
   ) {
     const tenantId = resolveTenantId(user);
-    return this.paymentsService.findInvoices(tenantId, orderId);
+    return this.paymentsService.findInvoices(tenantId, orderId, user);
   }
 
   @Post()
@@ -69,6 +69,6 @@ export class PaymentsController {
   )
   findReceipts(@CurrentUser() user: JwtPayload) {
     const tenantId = resolveTenantId(user);
-    return this.paymentsService.findReceipts(tenantId);
+    return this.paymentsService.findReceipts(tenantId, user);
   }
 }

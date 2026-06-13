@@ -11,6 +11,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this._authRepository) : super(const AuthInitial()) {
     on<AuthStarted>(_onStarted);
     on<AuthLoginRequested>(_onLogin);
+    on<AuthRegisterRequested>(_onRegister);
+    on<AuthProfileUpdated>(_onProfileUpdated);
     on<AuthLogoutRequested>(_onLogout);
   }
 
@@ -41,6 +43,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(const AuthFailure('Unable to sign in'));
       emit(const AuthUnauthenticated());
     }
+  }
+
+  Future<void> _onRegister(
+    AuthRegisterRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+    try {
+      final session = await _authRepository.registerCustomer(
+        tenantSlug: event.tenantSlug,
+        email: event.email,
+        password: event.password,
+        firstName: event.firstName,
+        lastName: event.lastName,
+        phone: event.phone,
+      );
+      emit(AuthAuthenticated(session.user));
+    } on ApiException catch (e) {
+      emit(AuthFailure(e.message));
+      emit(const AuthUnauthenticated());
+    } catch (_) {
+      emit(const AuthFailure('Unable to register'));
+      emit(const AuthUnauthenticated());
+    }
+  }
+
+  Future<void> _onProfileUpdated(
+    AuthProfileUpdated event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthAuthenticated(event.user));
   }
 
   Future<void> _onLogout(

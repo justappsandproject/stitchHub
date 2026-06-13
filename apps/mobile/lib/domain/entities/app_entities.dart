@@ -38,6 +38,7 @@ class CustomerEntity extends Equatable {
     required this.phone,
     this.email,
     this.isVip = false,
+    this.photoUrl,
   });
 
   final String id;
@@ -46,6 +47,7 @@ class CustomerEntity extends Equatable {
   final String phone;
   final String? email;
   final bool isVip;
+  final String? photoUrl;
 
   String get fullName => '$firstName $lastName'.trim();
 
@@ -140,4 +142,63 @@ class AdminTenantEntity extends Equatable {
 
   @override
   List<Object?> get props => [id, name, slug, isActive];
+}
+
+class MeasurementTemplateEntity extends Equatable {
+  const MeasurementTemplateEntity({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.fields,
+  });
+
+  final String id;
+  final String name;
+  final String category;
+  final List<MeasurementFieldEntity> fields;
+
+  @override
+  List<Object?> get props => [id, name];
+}
+
+class MeasurementFieldEntity extends Equatable {
+  const MeasurementFieldEntity({
+    required this.key,
+    required this.label,
+    required this.unit,
+  });
+
+  final String key;
+  final String label;
+  final String unit;
+
+  @override
+  List<Object?> get props => [key, label];
+}
+
+class MeasurementEntity extends Equatable {
+  const MeasurementEntity({
+    required this.id,
+    required this.version,
+    required this.values,
+    required this.templateName,
+    required this.fields,
+    required this.createdAt,
+    this.notes,
+    this.templateId,
+    this.customerId,
+  });
+
+  final String id;
+  final int version;
+  final Map<String, dynamic> values;
+  final String templateName;
+  final List<MeasurementFieldEntity> fields;
+  final DateTime createdAt;
+  final String? notes;
+  final String? templateId;
+  final String? customerId;
+
+  @override
+  List<Object?> get props => [id, version];
 }

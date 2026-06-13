@@ -143,6 +143,50 @@ async function main() {
 
   console.log('Seeded demo tenant:', demoTenant.name, '(Enterprise plan)');
   console.log('Demo owner login: owner@elegantstitches.com / demo1234');
+
+  const customerUser = await prisma.user.upsert({
+    where: { email: 'chidi@example.com' },
+    update: {},
+    create: {
+      email: 'chidi@example.com',
+      passwordHash: await bcrypt.hash('customer1234', 12),
+      firstName: 'Chidi',
+      lastName: 'Eze',
+      phone: '+2348098765432',
+      role: UserRole.CUSTOMER,
+      tenantId: demoTenant.id,
+    },
+  });
+
+  await prisma.customer.update({
+    where: { id: customer.id },
+    data: { userId: customerUser.id, email: 'chidi@example.com' },
+  });
+
+  const existingOrder = await prisma.order.findFirst({
+    where: { tenantId: demoTenant.id, customerId: customer.id },
+  });
+
+  if (!existingOrder) {
+    await prisma.order.create({
+      data: {
+        tenantId: demoTenant.id,
+        customerId: customer.id,
+        orderNumber: `ORD-${new Date().getFullYear()}-00001`,
+        fabric: 'Premium Ankara',
+        status: 'SEWING',
+        priority: 'HIGH',
+        totalAmount: 85000,
+        depositAmount: 40000,
+        balanceAmount: 45000,
+        statusHistory: {
+          create: { status: 'NEW', notes: 'Order created' },
+        },
+      },
+    });
+  }
+
+  console.log('Demo customer login: chidi@example.com / customer1234');
 }
 
 main()

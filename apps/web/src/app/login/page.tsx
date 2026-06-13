@@ -16,21 +16,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { authApi } from '@/lib/api';
-import { isSuperAdmin } from '@/lib/auth';
+import { isSuperAdmin, isCustomer, homePathForRole } from '@/lib/auth';
 import { getStoredSession, saveSession } from '@/lib/session';
 
 function resolveNextPath(next: string | null, role: string) {
   if (next && next.startsWith('/') && !next.startsWith('//')) {
     if (next.startsWith('/admin') && !isSuperAdmin(role)) {
-      return '/dashboard';
+      return homePathForRole(role);
     }
-    if (next.startsWith('/dashboard') && isSuperAdmin(role)) {
-      return '/admin';
+    if (next.startsWith('/dashboard') && (isSuperAdmin(role) || isCustomer(role))) {
+      return homePathForRole(role);
+    }
+    if (next.startsWith('/customer') && !isCustomer(role)) {
+      return homePathForRole(role);
     }
     return next;
   }
 
-  return isSuperAdmin(role) ? '/admin' : '/dashboard';
+  return homePathForRole(role);
 }
 
 function LoginForm() {
@@ -119,10 +122,19 @@ function LoginForm() {
               {loading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            <Link href="/forgot-password" className="text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </p>
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link href="/register" className="text-primary hover:underline">
               Register your fashion house
+            </Link>
+            {' · '}
+            <Link href="/register/customer" className="text-primary hover:underline">
+              Join as a customer
             </Link>
           </p>
         </CardContent>

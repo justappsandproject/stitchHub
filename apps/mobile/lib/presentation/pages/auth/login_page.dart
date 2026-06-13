@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/presentation/blocs/auth/auth_bloc.dart';
 
 class LoginPage extends StatefulWidget {
@@ -80,11 +81,23 @@ class _LoginPageState extends State<LoginPage> {
                         },
                   child: Text(loading ? 'Signing in...' : 'Sign in'),
                 ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: loading
+                      ? null
+                      : () => context.push('/register/customer'),
+                  child: const Text('Join as a customer'),
+                ),
+                TextButton(
+                  onPressed: loading ? null : () => context.push('/forgot-password'),
+                  child: const Text('Forgot password?'),
+                ),
                 const SizedBox(height: 24),
                 const Text(
                   'Demo accounts:\n'
                   'Admin: admin@stitchhub.com / admin123\n'
-                  'Designer: owner@elegantstitches.com / demo1234',
+                  'Designer: owner@elegantstitches.com / demo1234\n'
+                  'Customer: chidi@example.com / customer1234',
                   style: TextStyle(fontSize: 12),
                 ),
               ],

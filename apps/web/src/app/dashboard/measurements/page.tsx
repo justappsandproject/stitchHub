@@ -61,6 +61,7 @@ export default function MeasurementsPage() {
   const [loadingMeasurements, setLoadingMeasurements] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingMeasurement, setEditingMeasurement] = useState<Measurement | null>(null);
   const [templateId, setTemplateId] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
@@ -105,8 +106,22 @@ export default function MeasurementsPage() {
   const selectedTemplate = templates.find((t) => t.id === templateId);
 
   function openDialog() {
+    setEditingMeasurement(null);
     setValues({});
     setNotes('');
+    setError('');
+    setDialogOpen(true);
+  }
+
+  function openEditDialog(measurement: Measurement) {
+    setEditingMeasurement(measurement);
+    setTemplateId(measurement.template.id);
+    const nextValues: Record<string, string> = {};
+    for (const [key, value] of Object.entries(measurement.values)) {
+      nextValues[key] = String(value);
+    }
+    setValues(nextValues);
+    setNotes(measurement.notes ?? '');
     setError('');
     setDialogOpen(true);
   }
@@ -122,16 +137,27 @@ export default function MeasurementsPage() {
         if (val !== '') numericValues[key] = parseFloat(val);
       }
 
-      await api('/measurements', {
-        method: 'POST',
-        body: JSON.stringify({
-          customerId: selectedCustomerId,
-          templateId,
-          values: numericValues,
-          notes: notes || undefined,
-        }),
-      });
+      if (editingMeasurement) {
+        await api(`/measurements/${editingMeasurement.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            values: numericValues,
+            notes: notes || undefined,
+          }),
+        });
+      } else {
+        await api('/measurements', {
+          method: 'POST',
+          body: JSON.stringify({
+            customerId: selectedCustomerId,
+            templateId,
+            values: numericValues,
+            notes: notes || undefined,
+          }),
+        });
+      }
       setDialogOpen(false);
+      setEditingMeasurement(null);
       loadMeasurements(selectedCustomerId);
     } catch (err: unknown) {
       const apiErr = err as { message?: string | string[] };
@@ -215,6 +241,9 @@ export default function MeasurementsPage() {
                       {new Date(m.createdAt).toLocaleDateString()}
                     </CardDescription>
                   </div>
+                  <Button variant="outline" size="sm" onClick={() => openEditDialog(m)}>
+                    Edit
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -252,7 +281,7 @@ export default function MeasurementsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Measurement</DialogTitle>
+            <DialogTitle>{editingMeasurement ? 'Edit Measurement' : 'New Measurement'}</DialogTitle>
             <DialogDescription>
               Record measurements for{' '}
               {customers.find((c) => c.id === selectedCustomerId)?.firstName}{' '}

@@ -50,7 +50,7 @@ export class OrdersController {
   )
   findAll(@CurrentUser() user: JwtPayload, @Query() query: OrderQueryDto) {
     const tenantId = resolveTenantId(user);
-    return this.ordersService.findAll(tenantId, query);
+    return this.ordersService.findAll(tenantId, query, user);
   }
 
   @Get('kanban')
@@ -68,9 +68,18 @@ export class OrdersController {
   }
 
   @Get(':id')
+  @Roles(
+    UserRole.TENANT_OWNER,
+    UserRole.MANAGER,
+    UserRole.TAILOR,
+    UserRole.CUTTER,
+    UserRole.FINISHER,
+    UserRole.APPRENTICE,
+    UserRole.CUSTOMER,
+  )
   findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     const tenantId = resolveTenantId(user);
-    return this.ordersService.findOne(tenantId, id);
+    return this.ordersService.findOne(tenantId, id, user);
   }
 
   @Patch(':id/status')
