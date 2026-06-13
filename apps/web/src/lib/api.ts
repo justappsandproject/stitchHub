@@ -1,4 +1,27 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+const DEFAULT_LOCAL_API = 'http://localhost:3001/api/v1';
+const DEFAULT_PRODUCTION_API = 'https://stitchhub-gb1w.onrender.com/api/v1';
+
+function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return DEFAULT_PRODUCTION_API;
+  }
+  return DEFAULT_LOCAL_API;
+}
+
+function networkError(): ApiError {
+  const url = getApiUrl();
+  const hint = url.includes('localhost')
+    ? 'Start the API with: pnpm dev:api'
+    : 'Check your internet connection or try again later.';
+  return {
+    message: `Cannot reach API at ${url}. ${hint}`,
+    statusCode: 0,
+    code: 'NETWORK_ERROR',
+  };
+}
 
 export interface ApiError {
   message: string;
@@ -24,7 +47,7 @@ async function refreshAccessToken(): Promise<string | null> {
       if (!refreshToken) return null;
 
       try {
-        const res = await fetch(`${API_URL}/auth/refresh`, {
+        const res = await fetch(`${getApiUrl()}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
@@ -60,7 +83,7 @@ async function rawFetch(
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
 
-  return fetch(`${API_URL}${path}`, { ...fetchOptions, headers });
+  return fetch(`${getApiUrl()}${path}`, { ...fetchOptions, headers });
 }
 
 export async function api<T>(
@@ -75,7 +98,12 @@ export async function api<T>(
     explicitToken ??
     (isBrowser ? localStorage.getItem('accessToken') ?? undefined : undefined);
 
-  let res = await rawFetch(path, fetchOptions, token);
+  let res: Response;
+  try {
+    res = await rawFetch(path, fetchOptions, token);
+  } catch {
+    throw networkError();
+  }
 
   // On 401, try one token refresh and retry the original request.
   if (res.status === 401 && isBrowser && !isAuthRoute) {
@@ -111,11 +139,16 @@ export async function uploadFile(file: File): Promise<{ url: string; filename: s
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${API_URL}/uploads`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiUrl()}/uploads`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+  } catch {
+    throw networkError();
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
@@ -178,7 +211,7 @@ export const authApi = {
 };
 
 export const dashboardApi = {
-  get: (token: string) => api<DashboardData | SuperAdminDashboardData>('/dashboard', { token }),
+  get: () => api<DashboardData | SuperAdminDashboardData>('/dashboard'),
 };
 
 export const tenantsApi = {

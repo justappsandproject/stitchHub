@@ -45,15 +45,29 @@ const statusColors: Record<string, string> = {
 export default function CustomerHomePage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      setError('Not signed in');
+      return;
+    }
 
     dashboardApi
-      .get(token)
-      .then((res) => setData(res as DashboardData))
-      .catch(console.error)
+      .get()
+      .then((res) => {
+        const payload = res as DashboardData;
+        if (!payload.summary) {
+          throw { message: 'Invalid dashboard response' };
+        }
+        setData(payload);
+      })
+      .catch((err: unknown) => {
+        const apiErr = err as { message?: string };
+        setError(apiErr.message ?? 'Failed to load dashboard');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -62,7 +76,11 @@ export default function CustomerHomePage() {
   }
 
   if (!data) {
-    return <p className="text-muted-foreground">Failed to load dashboard</p>;
+    return (
+      <p className="text-muted-foreground">
+        {error || 'Failed to load dashboard. Is the API running on port 3001?'}
+      </p>
+    );
   }
 
   return (
