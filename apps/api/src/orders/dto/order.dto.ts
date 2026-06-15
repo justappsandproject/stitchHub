@@ -51,6 +51,11 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   depositAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Promo code to apply to subtotal' })
+  @IsOptional()
+  @IsString()
+  discountCode?: string;
 }
 
 export class UpdateOrderStatusDto {

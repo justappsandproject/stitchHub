@@ -1,8 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderStatus, Prisma, UserRole } from '@prisma/client';
 import { ORDER_STATUS_PROGRESS } from '@stitchhub/shared';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { resolveCustomerId } from '../common/utils/customer-scope';
+import { DiscountsService } from '../discounts/discounts.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
@@ -16,6 +18,8 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private subscriptions: SubscriptionsService,
+    private discounts: DiscountsService,
+    private portfolio: PortfolioService,
   ) {}
 
   private async generateOrderNumber(tenantId: string): Promise<string> {
@@ -32,11 +36,30 @@ export class OrdersService {
     });
     if (!customer) throw new NotFoundException('Customer not found');
 
+    const subtotalAmount = dto.totalAmount;
+    let discountId: string | undefined;
+    let discountAmount = 0;
+    let totalAmount = subtotalAmount;
+
+    if (dto.discountCode) {
+      const validation = await this.discounts.validate(tenantId, {
+        code: dto.discountCode,
+        orderAmount: subtotalAmount,
+        customerId: dto.customerId,
+      });
+      if (!validation.valid || !validation.discountId) {
+        throw new BadRequestException(validation.message ?? 'Invalid discount code');
+      }
+      discountId = validation.discountId;
+      discountAmount = validation.discountAmount;
+      totalAmount = validation.totalAmount;
+    }
+
     const orderNumber = await this.generateOrderNumber(tenantId);
     const deposit = dto.depositAmount ?? 0;
-    const balance = dto.totalAmount - deposit;
+    const balance = totalAmount - deposit;
 
-    return this.prisma.order.create({
+    const order = await this.prisma.order.create({
       data: {
         tenantId,
         customerId: dto.customerId,
@@ -48,7 +71,10 @@ export class OrdersService {
           : undefined,
         priority: dto.priority,
         notes: dto.notes,
-        totalAmount: dto.totalAmount,
+        subtotalAmount,
+        discountId,
+        discountAmount,
+        totalAmount,
         depositAmount: deposit,
         balanceAmount: balance,
         statusHistory: {
@@ -58,9 +84,19 @@ export class OrdersService {
       include: {
         customer: true,
         style: true,
+        discount: true,
         statusHistory: { orderBy: { createdAt: 'desc' } },
       },
     });
+
+    if (discountId) {
+      await this.prisma.discount.update({
+        where: { id: discountId },
+        data: { usedCount: { increment: 1 } },
+      });
+    }
+
+    return order;
   }
 
   async findAll(tenantId: string, query: OrderQueryDto, user?: JwtPayload) {
@@ -83,6 +119,7 @@ export class OrdersService {
       include: {
         customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
         style: { select: { id: true, name: true, category: true } },
+        discount: { select: { id: true, code: true, name: true, type: true, value: true } },
         assignedTo: { select: { id: true, firstName: true, lastName: true } },
       },
     });
@@ -124,6 +161,7 @@ export class OrdersService {
       include: {
         customer: true,
         style: true,
+        discount: true,
         assignedTo: { select: { id: true, firstName: true, lastName: true } },
         statusHistory: { orderBy: { createdAt: 'desc' } },
         invoices: { include: { payments: true } },
@@ -151,9 +189,9 @@ export class OrdersService {
     dto: UpdateOrderStatusDto,
     changedBy?: string,
   ) {
-    await this.findOne(tenantId, id);
+    const existing = await this.findOne(tenantId, id);
 
-    return this.prisma.order.update({
+    const order = await this.prisma.order.update({
       where: { id },
       data: {
         status: dto.status,
@@ -168,8 +206,18 @@ export class OrdersService {
       },
       include: {
         customer: true,
+        style: true,
         statusHistory: { orderBy: { createdAt: 'desc' }, take: 5 },
       },
     });
+
+    if (
+      dto.status === OrderStatus.DELIVERED &&
+      existing.status !== OrderStatus.DELIVERED
+    ) {
+      await this.portfolio.createFromDeliveredOrder(tenantId, id);
+    }
+
+    return order;
   }
 }

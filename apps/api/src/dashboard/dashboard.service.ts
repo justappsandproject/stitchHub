@@ -18,6 +18,9 @@ export class DashboardService {
       outstandingAgg,
       ordersByStatus,
       recentOrders,
+      portfolioCount,
+      activeDiscounts,
+      recentPortfolio,
     ] = await Promise.all([
       this.prisma.customer.count({ where: { tenantId } }),
       this.prisma.order.count({ where: { tenantId } }),
@@ -55,6 +58,25 @@ export class DashboardService {
           customer: { select: { firstName: true, lastName: true } },
         },
       }),
+      this.prisma.portfolioItem.count({
+        where: { tenantId, isPublished: true },
+      }),
+      this.prisma.discount.count({
+        where: { tenantId, isActive: true },
+      }),
+      this.prisma.portfolioItem.findMany({
+        where: { tenantId, isPublished: true },
+        orderBy: [{ isFeatured: 'desc' }, { completedAt: 'desc' }],
+        take: 4,
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          photoUrls: true,
+          isFeatured: true,
+          source: true,
+        },
+      }),
     ]);
 
     return {
@@ -65,12 +87,15 @@ export class DashboardService {
         deliveredOrders,
         totalRevenue: Number(revenueAgg._sum.amount ?? 0),
         outstandingBalance: Number(outstandingAgg._sum.balanceAmount ?? 0),
+        portfolioCount,
+        activeDiscounts,
       },
       ordersByStatus: ordersByStatus.map((s) => ({
         status: s.status,
         count: s._count.status,
       })),
       recentOrders,
+      recentPortfolio,
     };
   }
 
@@ -139,6 +164,7 @@ export class DashboardService {
       deliveredOrders,
       outstandingAgg,
       recentOrders,
+      recentPortfolio,
     ] = await Promise.all([
       this.prisma.order.count({ where: { tenantId, customerId } }),
       this.prisma.order.count({
@@ -168,6 +194,20 @@ export class DashboardService {
           style: { select: { name: true } },
         },
       }),
+      this.prisma.portfolioItem.findMany({
+        where: { tenantId, isPublished: true },
+        orderBy: [{ isFeatured: 'desc' }, { completedAt: 'desc' }],
+        take: 6,
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          photoUrls: true,
+          fabric: true,
+          styleName: true,
+          isFeatured: true,
+        },
+      }),
     ]);
 
     return {
@@ -178,6 +218,7 @@ export class DashboardService {
         outstandingBalance: Number(outstandingAgg._sum.balanceAmount ?? 0),
       },
       recentOrders,
+      recentPortfolio,
     };
   }
 

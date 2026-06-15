@@ -50,6 +50,25 @@ abstract class DashboardRepository {
   Future<DashboardSummary> getDashboard();
 }
 
+abstract class PortfolioRepository {
+  Future<List<PortfolioItemEntity>> getPortfolio({String? query, bool? featured});
+  Future<PortfolioItemEntity> createPortfolioItem(Map<String, dynamic> data);
+  Future<PortfolioItemEntity> updatePortfolioItem(String id, Map<String, dynamic> data);
+  Future<void> deletePortfolioItem(String id);
+}
+
+abstract class DiscountsRepository {
+  Future<List<DiscountEntity>> getDiscounts();
+  Future<DiscountEntity> createDiscount(Map<String, dynamic> data);
+  Future<DiscountEntity> updateDiscount(String id, Map<String, dynamic> data);
+  Future<void> deactivateDiscount(String id);
+  Future<DiscountValidationResult> validateDiscount({
+    required String code,
+    required double orderAmount,
+    String? customerId,
+  });
+}
+
 abstract class MessagesRepository {
   Future<int> getUnreadCount();
   Future<List<MessageEntity>> getInbox();

@@ -313,10 +313,39 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
   final ApiClient _apiClient;
 
+  List<OrderEntity> _parseRecentOrders(Map<String, dynamic> json) {
+    return (json['recentOrders'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map(OrderModel.fromJson)
+        .toList();
+  }
+
+  List<PortfolioItemEntity> _parseRecentPortfolio(Map<String, dynamic> json) {
+    return (json['recentPortfolio'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map(PortfolioItemModel.fromJson)
+        .toList();
+  }
+
+  List<OrderStatusCount> _parseOrdersByStatus(Map<String, dynamic> json) {
+    return (json['ordersByStatus'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map(
+          (item) => OrderStatusCount(
+            status: item['status'] as String? ?? '',
+            count: item['count'] as int? ?? 0,
+          ),
+        )
+        .toList();
+  }
+
   @override
   Future<DashboardSummary> getDashboard() async {
     final json = await _apiClient.get('/dashboard');
     final summary = json['summary'] as Map<String, dynamic>? ?? json;
+    final recentOrders = _parseRecentOrders(json);
+    final recentPortfolio = _parseRecentPortfolio(json);
+    final ordersByStatus = _parseOrdersByStatus(json);
 
     if (summary.containsKey('totalTenants')) {
       return DashboardSummary(
@@ -332,6 +361,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
             isCurrency: true,
           ),
         ],
+        recentOrders: recentOrders,
+        recentPortfolio: recentPortfolio,
+        ordersByStatus: ordersByStatus,
       );
     }
 
@@ -342,17 +374,19 @@ class DashboardRepositoryImpl implements DashboardRepository {
           DashboardStat(label: 'Customers', value: summary['totalCustomers'] ?? 0),
           DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
           DashboardStat(label: 'Active Orders', value: summary['activeOrders'] ?? 0),
+          DashboardStat(label: 'Portfolio', value: summary['portfolioCount'] ?? 0),
+          DashboardStat(label: 'Promos', value: summary['activeDiscounts'] ?? 0),
           DashboardStat(
             label: 'Revenue',
             value: summary['totalRevenue'] ?? 0,
             isCurrency: true,
           ),
-          DashboardStat(
-            label: 'Outstanding',
-            value: summary['outstandingBalance'] ?? 0,
-            isCurrency: true,
-          ),
         ],
+        recentOrders: recentOrders,
+        recentPortfolio: recentPortfolio,
+        ordersByStatus: ordersByStatus,
+        portfolioCount: summary['portfolioCount'] as int?,
+        activeDiscounts: summary['activeDiscounts'] as int?,
       );
     }
 
@@ -368,6 +402,100 @@ class DashboardRepositoryImpl implements DashboardRepository {
           isCurrency: true,
         ),
       ],
+      recentOrders: recentOrders,
+      recentPortfolio: recentPortfolio,
+    );
+  }
+}
+
+class PortfolioRepositoryImpl implements PortfolioRepository {
+  PortfolioRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<List<PortfolioItemEntity>> getPortfolio({String? query, bool? featured}) async {
+    final list = await _apiClient.getList(
+      '/portfolio',
+      queryParameters: {
+        if (query != null && query.isNotEmpty) 'q': query,
+        if (featured == true) 'featured': 'true',
+      },
+    );
+    return list
+        .cast<Map<String, dynamic>>()
+        .map(PortfolioItemModel.fromJson)
+        .toList();
+  }
+
+  @override
+  Future<PortfolioItemEntity> createPortfolioItem(Map<String, dynamic> data) async {
+    final json = await _apiClient.post('/portfolio', data: data);
+    return PortfolioItemModel.fromJson(json);
+  }
+
+  @override
+  Future<PortfolioItemEntity> updatePortfolioItem(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    final json = await _apiClient.patch('/portfolio/$id', data: data);
+    return PortfolioItemModel.fromJson(json);
+  }
+
+  @override
+  Future<void> deletePortfolioItem(String id) async {
+    await _apiClient.delete('/portfolio/$id');
+  }
+}
+
+class DiscountsRepositoryImpl implements DiscountsRepository {
+  DiscountsRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<List<DiscountEntity>> getDiscounts() async {
+    final list = await _apiClient.getList('/discounts');
+    return list.cast<Map<String, dynamic>>().map(DiscountModel.fromJson).toList();
+  }
+
+  @override
+  Future<DiscountEntity> createDiscount(Map<String, dynamic> data) async {
+    final json = await _apiClient.post('/discounts', data: data);
+    return DiscountModel.fromJson(json);
+  }
+
+  @override
+  Future<DiscountEntity> updateDiscount(String id, Map<String, dynamic> data) async {
+    final json = await _apiClient.patch('/discounts/$id', data: data);
+    return DiscountModel.fromJson(json);
+  }
+
+  @override
+  Future<void> deactivateDiscount(String id) async {
+    await _apiClient.delete('/discounts/$id');
+  }
+
+  @override
+  Future<DiscountValidationResult> validateDiscount({
+    required String code,
+    required double orderAmount,
+    String? customerId,
+  }) async {
+    final json = await _apiClient.post('/discounts/validate', data: {
+      'code': code,
+      'orderAmount': orderAmount,
+      if (customerId != null) 'customerId': customerId,
+    });
+    return DiscountValidationResult(
+      valid: json['valid'] as bool? ?? false,
+      discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0,
+      subtotalAmount: (json['subtotalAmount'] as num?)?.toDouble() ?? orderAmount,
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? orderAmount,
+      code: json['code'] as String?,
+      name: json['name'] as String?,
+      message: json['message'] as String?,
     );
   }
 }

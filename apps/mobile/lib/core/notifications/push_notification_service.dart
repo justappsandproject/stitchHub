@@ -2,13 +2,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:stitchhub_mobile/core/firebase/firebase_bootstrap.dart';
 import 'package:stitchhub_mobile/core/storage/secure_storage.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/firebase_options.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 }
 
 class PushNotificationService {
@@ -16,21 +21,26 @@ class PushNotificationService {
 
   final SecureStorage _storage;
   final AuthRepository _authRepository;
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  FirebaseMessaging? _messaging;
   bool _initialized = false;
+
+  FirebaseMessaging get _firebaseMessaging {
+    _messaging ??= FirebaseMessaging.instance;
+    return _messaging!;
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
 
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    if (!isFirebaseReady) {
+      debugPrint('Push notifications skipped: Firebase is not initialized');
+      return;
+    }
 
+    try {
       const androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosSettings = DarwinInitializationSettings();
@@ -42,23 +52,23 @@ class PushNotificationService {
         onDidReceiveNotificationResponse: (_) {},
       );
 
-      await _messaging.requestPermission();
+      await _firebaseMessaging.requestPermission();
 
-      final token = await _messaging.getToken();
+      final token = await _firebaseMessaging.getToken();
       if (token != null) {
         await _storage.saveFcmToken(token);
         await _registerTokenWithApi(token);
       }
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
-      _messaging.onTokenRefresh.listen((token) async {
+      _firebaseMessaging.onTokenRefresh.listen((token) async {
         await _storage.saveFcmToken(token);
         await _registerTokenWithApi(token);
       });
 
       _initialized = true;
-    } catch (e) {
-      debugPrint('Push notifications unavailable: $e');
+    } catch (e, stackTrace) {
+      debugPrint('Push notifications unavailable: $e\n$stackTrace');
     }
   }
 
@@ -85,8 +95,11 @@ class PushNotificationService {
   String? get cachedToken => _storage.readFcmToken();
 
   Future<void> syncTokenWithApi() async {
-    final token = _storage.readFcmToken();
+    if (!isFirebaseReady) return;
+
+    final token = _storage.readFcmToken() ?? await _firebaseMessaging.getToken();
     if (token != null) {
+      await _storage.saveFcmToken(token);
       await _registerTokenWithApi(token);
     }
   }

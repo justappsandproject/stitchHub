@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/constants/enums.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 import 'package:stitchhub_mobile/presentation/blocs/orders/orders_bloc.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
@@ -15,10 +16,16 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
+  String? _statusFilter;
+
   @override
   void initState() {
     super.initState();
-    sl<OrdersBloc>().add(const OrdersLoadRequested());
+    _load();
+  }
+
+  void _load() {
+    sl<OrdersBloc>().add(OrdersLoadRequested(status: _statusFilter));
   }
 
   void _navigate(int index) {
@@ -36,6 +43,50 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
+  Future<void> _showStatusSheet(String orderId, OrderStatus current) async {
+    const nextStatuses = [
+      OrderStatus.newOrder,
+      OrderStatus.measured,
+      OrderStatus.cutting,
+      OrderStatus.sewing,
+      OrderStatus.fitting,
+      OrderStatus.finishing,
+      OrderStatus.ready,
+      OrderStatus.delivered,
+      OrderStatus.cancelled,
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Update production stage', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              ...nextStatuses.map(
+                (status) => ListTile(
+                  leading: orderStatusChip(status),
+                  title: Text(status.value.replaceAll('_', ' ')),
+                  selected: status == current,
+                  onTap: () {
+                    sl<OrdersBloc>().add(
+                      OrderStatusUpdateRequested(orderId: orderId, status: status.value),
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DesignerShell(
@@ -43,37 +94,141 @@ class _OrdersPageState extends State<OrdersPage> {
       selectedIndex: 1,
       onNavigate: _navigate,
       unreadMessages: 0,
-      body: BlocBuilder<OrdersBloc, OrdersState>(
-        bloc: sl<OrdersBloc>(),
-        builder: (context, state) {
-          if (state is OrdersLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is OrdersFailure) {
-            return Center(child: Text(state.message));
-          }
-          if (state is OrdersLoaded) {
-            if (state.orders.isEmpty) {
-              return const Center(child: Text('No orders yet'));
-            }
-            return ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: state.orders.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final order = state.orders[index];
-                return Card(
-                  child: ListTile(
-                    title: Text(order.orderNumber),
-                    subtitle: Text('${order.customerName} · ${order.fabric ?? 'Custom'}'),
-                    trailing: orderStatusChip(order.status),
-                  ),
-                );
+      body: Column(
+        children: [
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                _FilterChip(
+                  label: 'All',
+                  selected: _statusFilter == null,
+                  onTap: () => setState(() {
+                    _statusFilter = null;
+                    _load();
+                  }),
+                ),
+                ...OrderStatus.values.where((s) => s != OrderStatus.measured).map(
+                      (status) => _FilterChip(
+                        label: status.value.replaceAll('_', ' '),
+                        selected: _statusFilter == status.value,
+                        onTap: () => setState(() {
+                          _statusFilter = status.value;
+                          _load();
+                        }),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: BlocConsumer<OrdersBloc, OrdersState>(
+              bloc: sl<OrdersBloc>(),
+              listener: (_, state) {
+                if (state is OrdersLoaded || state is OrdersFailure) {
+                  if (state is OrdersFailure) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.message)),
+                    );
+                  }
+                }
               },
-            );
-          }
-          return const SizedBox.shrink();
-        },
+              builder: (context, state) {
+                if (state is OrdersLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (state is OrdersFailure && state.message.isNotEmpty) {
+                  return Center(child: Text(state.message));
+                }
+                if (state is OrdersLoaded) {
+                  if (state.orders.isEmpty) {
+                    return const Center(child: Text('No orders yet'));
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () async => _load(),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: state.orders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final order = state.orders[index];
+                        final progress = orderStatusProgress[order.status] ?? 0;
+                        return Card(
+                          child: InkWell(
+                            onTap: () => _showStatusSheet(order.id, order.status),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        order.orderNumber,
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      orderStatusChip(order.status),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text('${order.customerName} · ${order.fabric ?? 'Custom'}'),
+                                  const SizedBox(height: 10),
+                                  LinearProgressIndicator(value: progress / 100),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('$progress% complete'),
+                                      Text(formatNgn(order.totalAmount)),
+                                    ],
+                                  ),
+                                  if ((order.balanceAmount ?? 0) > 0)
+                                    Text(
+                                      'Balance: ${formatNgn(order.balanceAmount!)}',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => onTap(),
       ),
     );
   }
@@ -124,8 +279,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
               itemCount: state.orders.length,
               itemBuilder: (context, index) {
                 final order = state.orders[index];
-                final progress =
-                    orderStatusProgress[order.status] ?? 0;
+                final progress = orderStatusProgress[order.status] ?? 0;
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),

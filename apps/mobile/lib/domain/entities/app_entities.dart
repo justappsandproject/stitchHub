@@ -82,13 +82,122 @@ class DashboardSummary extends Equatable {
   const DashboardSummary({
     required this.title,
     required this.stats,
+    this.recentOrders = const [],
+    this.recentPortfolio = const [],
+    this.ordersByStatus = const [],
+    this.portfolioCount,
+    this.activeDiscounts,
   });
 
   final String title;
   final List<DashboardStat> stats;
+  final List<OrderEntity> recentOrders;
+  final List<PortfolioItemEntity> recentPortfolio;
+  final List<OrderStatusCount> ordersByStatus;
+  final int? portfolioCount;
+  final int? activeDiscounts;
 
   @override
-  List<Object?> get props => [title, stats];
+  List<Object?> get props => [title, stats, recentOrders, recentPortfolio];
+}
+
+class OrderStatusCount extends Equatable {
+  const OrderStatusCount({required this.status, required this.count});
+
+  final String status;
+  final int count;
+
+  @override
+  List<Object?> get props => [status, count];
+}
+
+class PortfolioItemEntity extends Equatable {
+  const PortfolioItemEntity({
+    required this.id,
+    required this.title,
+    this.description,
+    this.category,
+    this.fabric,
+    this.styleName,
+    this.photoUrls = const [],
+    this.isFeatured = false,
+    this.isPublished = true,
+    this.source,
+    this.completedAt,
+  });
+
+  final String id;
+  final String title;
+  final String? description;
+  final String? category;
+  final String? fabric;
+  final String? styleName;
+  final List<String> photoUrls;
+  final bool isFeatured;
+  final bool isPublished;
+  final String? source;
+  final DateTime? completedAt;
+
+  @override
+  List<Object?> get props => [id, title];
+}
+
+class DiscountEntity extends Equatable {
+  const DiscountEntity({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.type,
+    required this.value,
+    this.description,
+    this.applicability,
+    this.minOrderAmount,
+    this.maxDiscountCap,
+    this.maxUses,
+    this.usedCount = 0,
+    this.isActive = true,
+    this.validUntil,
+  });
+
+  final String id;
+  final String code;
+  final String name;
+  final String type;
+  final double value;
+  final String? description;
+  final String? applicability;
+  final double? minOrderAmount;
+  final double? maxDiscountCap;
+  final int? maxUses;
+  final int usedCount;
+  final bool isActive;
+  final DateTime? validUntil;
+
+  @override
+  List<Object?> get props => [id, code];
+}
+
+class DiscountValidationResult extends Equatable {
+  const DiscountValidationResult({
+    required this.valid,
+    required this.discountAmount,
+    required this.subtotalAmount,
+    required this.totalAmount,
+    this.code,
+    this.name,
+    this.message,
+  });
+
+  final bool valid;
+  final double discountAmount;
+  final double subtotalAmount;
+  final double totalAmount;
+  final String? code;
+  final String? name;
+  final String? message;
+
+  @override
+  List<Object?> get props => [valid, totalAmount];
 }
 
 class DashboardStat extends Equatable {

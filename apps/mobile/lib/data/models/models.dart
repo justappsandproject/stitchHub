@@ -241,3 +241,74 @@ class MeasurementModel extends MeasurementEntity {
     );
   }
 }
+
+class PortfolioItemModel extends PortfolioItemEntity {
+  const PortfolioItemModel({
+    required super.id,
+    required super.title,
+    super.description,
+    super.category,
+    super.fabric,
+    super.styleName,
+    super.photoUrls,
+    super.isFeatured,
+    super.isPublished,
+    super.source,
+    super.completedAt,
+  });
+
+  factory PortfolioItemModel.fromJson(Map<String, dynamic> json) =>
+      PortfolioItemModel(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        description: json['description'] as String?,
+        category: json['category'] as String?,
+        fabric: json['fabric'] as String?,
+        styleName: json['styleName'] as String?,
+        photoUrls: (json['photoUrls'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        isFeatured: json['isFeatured'] as bool? ?? false,
+        isPublished: json['isPublished'] as bool? ?? true,
+        source: json['source'] as String?,
+        completedAt: json['completedAt'] != null
+            ? DateTime.tryParse(json['completedAt'] as String)
+            : null,
+      );
+}
+
+class DiscountModel extends DiscountEntity {
+  const DiscountModel({
+    required super.id,
+    required super.code,
+    required super.name,
+    required super.type,
+    required super.value,
+    super.description,
+    super.applicability,
+    super.minOrderAmount,
+    super.maxDiscountCap,
+    super.maxUses,
+    super.usedCount,
+    super.isActive,
+    super.validUntil,
+  });
+
+  factory DiscountModel.fromJson(Map<String, dynamic> json) => DiscountModel(
+        id: json['id'] as String,
+        code: json['code'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        type: json['type'] as String? ?? 'PERCENTAGE',
+        value: (json['value'] as num?)?.toDouble() ?? 0,
+        description: json['description'] as String?,
+        applicability: json['applicability'] as String?,
+        minOrderAmount: (json['minOrderAmount'] as num?)?.toDouble(),
+        maxDiscountCap: (json['maxDiscountCap'] as num?)?.toDouble(),
+        maxUses: json['maxUses'] as int?,
+        usedCount: json['usedCount'] as int? ?? 0,
+        isActive: json['isActive'] as bool? ?? true,
+        validUntil: json['validUntil'] != null
+            ? DateTime.tryParse(json['validUntil'] as String)
+            : null,
+      );
+}

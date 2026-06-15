@@ -16,9 +16,12 @@ import 'package:stitchhub_mobile/presentation/pages/designer/orders_page.dart'
     show CustomerOrdersPage, OrdersPage;
 import 'package:stitchhub_mobile/presentation/pages/designer/billing_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/customers_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/designer_discounts_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_home_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_measurements_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/designer_portfolio_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/messages_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/customer/customer_portfolio_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
 
@@ -38,10 +41,13 @@ class AppRouter {
   static const designerCustomers = '/designer/customers';
   static const designerMessages = '/designer/messages';
   static const designerBilling = '/designer/billing';
+  static const designerPortfolio = '/designer/portfolio';
+  static const designerDiscounts = '/designer/discounts';
   static const designerMeasurements = '/designer/measurements';
   static const customerHome = '/customer';
   static const customerOrders = '/customer/orders';
   static const customerMeasurements = '/customer/measurements';
+  static const customerPortfolio = '/customer/portfolio';
   static const settings = '/settings';
 
   static GoRouter create({
@@ -111,9 +117,12 @@ class AppRouter {
         ),
         GoRoute(path: designerMessages, builder: (_, __) => const MessagesPage()),
         GoRoute(path: designerBilling, builder: (_, __) => const BillingPage()),
+        GoRoute(path: designerPortfolio, builder: (_, __) => const DesignerPortfolioPage()),
+        GoRoute(path: designerDiscounts, builder: (_, __) => const DesignerDiscountsPage()),
         GoRoute(path: customerHome, builder: (_, __) => const CustomerHomePage()),
         GoRoute(path: customerOrders, builder: (_, __) => const CustomerOrdersPage()),
         GoRoute(path: customerMeasurements, builder: (_, __) => const CustomerMeasurementsPage()),
+        GoRoute(path: customerPortfolio, builder: (_, __) => const CustomerPortfolioPage()),
       ],
     );
   }
