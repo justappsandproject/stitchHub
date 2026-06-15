@@ -69,27 +69,45 @@ export class CustomersService {
   }
 
   async findOne(tenantId: string, id: string) {
-    const customer = await this.prisma.customer.findFirst({
-      where: { id, tenantId },
-      include: {
-        measurements: {
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-          include: { template: true },
+    const [customer, subscription] = await Promise.all([
+      this.prisma.customer.findFirst({
+        where: { id, tenantId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              lastLoginAt: true,
+            },
+          },
+          measurements: {
+            orderBy: { createdAt: 'desc' },
+            include: { template: true },
+          },
+          orders: {
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            include: {
+              style: { select: { id: true, name: true, category: true } },
+            },
+          },
+          _count: { select: { orders: true, measurements: true } },
         },
-        orders: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-        _count: { select: { orders: true, measurements: true } },
-      },
-    });
+      }),
+      this.subscriptions.getCurrent(tenantId),
+    ]);
 
     if (!customer) {
       throw new NotFoundException('Customer not found');
     }
 
-    return customer;
+    return {
+      ...customer,
+      tenantPlan: subscription.plan,
+      tenantSubscriptionStatus: subscription.status,
+      tenantUsage: subscription.usage,
+    };
   }
 
   async update(tenantId: string, id: string, dto: UpdateCustomerDto) {

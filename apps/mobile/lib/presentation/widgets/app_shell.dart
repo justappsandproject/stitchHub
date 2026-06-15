@@ -163,6 +163,7 @@ class CustomerShell extends StatelessWidget {
         onDestinationSelected: onNavigate,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.palette_outlined), label: 'Styles'),
           NavigationDestination(icon: Icon(Icons.checkroom_outlined), label: 'Orders'),
           NavigationDestination(icon: Icon(Icons.straighten), label: 'Measure'),
           NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),

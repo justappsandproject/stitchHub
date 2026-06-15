@@ -43,6 +43,7 @@ abstract class OrdersRepository {
 
 abstract class CustomersRepository {
   Future<List<CustomerEntity>> getCustomers({String? query});
+  Future<Map<String, dynamic>> getCustomerDetail(String id);
   Future<CustomerEntity> createCustomer(Map<String, dynamic> data);
 }
 
@@ -75,6 +76,14 @@ abstract class MessagesRepository {
   Future<List<MessageEntity>> getAdminThread(String tenantId);
   Future<List<AdminTenantEntity>> getAdminThreads();
   Future<void> sendMessage(String body, {String? tenantId});
+}
+
+abstract class StylesRepository {
+  Future<List<StyleEntity>> getStyles({String? query});
+  Future<StyleEntity> getStyle(String id);
+  Future<StyleEntity> createStyle(Map<String, dynamic> data);
+  Future<StyleEntity> updateStyle(String id, Map<String, dynamic> data);
+  Future<void> deleteStyle(String id);
 }
 
 abstract class SubscriptionRepository {

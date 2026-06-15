@@ -1,6 +1,7 @@
 'use client';
 
 import { Plus, Search, Star } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -160,8 +161,8 @@ export default function CustomersPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {customers.map((customer) => (
+            <Link key={customer.id} href={`/dashboard/customers/${customer.id}`}>
             <Card
-              key={customer.id}
               className="cursor-pointer transition-shadow hover:shadow-md"
             >
               <CardHeader>
@@ -196,6 +197,7 @@ export default function CustomersPage() {
                 )}
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       )}

@@ -56,6 +56,7 @@ export class DashboardService {
         take: 5,
         include: {
           customer: { select: { firstName: true, lastName: true } },
+          style: { select: { id: true, name: true } },
         },
       }),
       this.prisma.portfolioItem.count({

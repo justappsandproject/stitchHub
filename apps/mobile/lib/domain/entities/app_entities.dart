@@ -221,15 +221,31 @@ class SubscriptionEntity extends Equatable {
     required this.status,
     required this.isSuspended,
     required this.requiresPayment,
+    this.configName,
+    this.priceNgn,
+    this.maxCustomers,
+    this.maxOrdersPerMonth,
+    this.usageCustomers,
+    this.usageOrdersThisMonth,
+    this.usageMeasurements,
+    this.currentPeriodEnd,
   });
 
   final SubscriptionPlan plan;
   final String status;
   final bool isSuspended;
   final bool requiresPayment;
+  final String? configName;
+  final int? priceNgn;
+  final int? maxCustomers;
+  final int? maxOrdersPerMonth;
+  final int? usageCustomers;
+  final int? usageOrdersThisMonth;
+  final int? usageMeasurements;
+  final DateTime? currentPeriodEnd;
 
   @override
-  List<Object?> get props => [plan, status, isSuspended];
+  List<Object?> get props => [plan, status, isSuspended, requiresPayment];
 }
 
 class AdminTenantEntity extends Equatable {
@@ -310,4 +326,29 @@ class MeasurementEntity extends Equatable {
 
   @override
   List<Object?> get props => [id, version];
+}
+
+class StyleEntity extends Equatable {
+  const StyleEntity({
+    required this.id,
+    required this.name,
+    required this.category,
+    this.description,
+    this.photoUrls = const [],
+    this.videoUrls = const [],
+    this.basePrice,
+    this.isActive = true,
+  });
+
+  final String id;
+  final String name;
+  final String category;
+  final String? description;
+  final List<String> photoUrls;
+  final List<String> videoUrls;
+  final double? basePrice;
+  final bool isActive;
+
+  @override
+  List<Object?> get props => [id, name];
 }

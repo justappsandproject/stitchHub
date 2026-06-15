@@ -22,6 +22,10 @@ import 'package:stitchhub_mobile/presentation/pages/designer/designer_measuremen
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_portfolio_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/messages_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/customer/customer_portfolio_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/customer/customer_styles_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/customer/customer_style_detail_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/customer_detail_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/designer_styles_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
 
@@ -47,6 +51,9 @@ class AppRouter {
   static const customerHome = '/customer';
   static const customerOrders = '/customer/orders';
   static const customerMeasurements = '/customer/measurements';
+  static const designerStyles = '/designer/styles';
+  static const designerCustomerDetail = '/designer/customers';
+  static const customerStyles = '/customer/styles';
   static const customerPortfolio = '/customer/portfolio';
   static const settings = '/settings';
 
@@ -119,7 +126,21 @@ class AppRouter {
         GoRoute(path: designerBilling, builder: (_, __) => const BillingPage()),
         GoRoute(path: designerPortfolio, builder: (_, __) => const DesignerPortfolioPage()),
         GoRoute(path: designerDiscounts, builder: (_, __) => const DesignerDiscountsPage()),
+        GoRoute(path: designerStyles, builder: (_, __) => const DesignerStylesPage()),
+        GoRoute(
+          path: '$designerCustomerDetail/:id',
+          builder: (context, state) => CustomerDetailPage(
+            customerId: state.pathParameters['id']!,
+          ),
+        ),
         GoRoute(path: customerHome, builder: (_, __) => const CustomerHomePage()),
+        GoRoute(path: customerStyles, builder: (_, __) => const CustomerStylesPage()),
+        GoRoute(
+          path: '$customerStyles/:id',
+          builder: (context, state) => CustomerStyleDetailPage(
+            styleId: state.pathParameters['id']!,
+          ),
+        ),
         GoRoute(path: customerOrders, builder: (_, __) => const CustomerOrdersPage()),
         GoRoute(path: customerMeasurements, builder: (_, __) => const CustomerMeasurementsPage()),
         GoRoute(path: customerPortfolio, builder: (_, __) => const CustomerPortfolioPage()),

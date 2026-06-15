@@ -161,15 +161,36 @@ class SubscriptionModel extends SubscriptionEntity {
     required super.status,
     required super.isSuspended,
     required super.requiresPayment,
+    super.configName,
+    super.priceNgn,
+    super.maxCustomers,
+    super.maxOrdersPerMonth,
+    super.usageCustomers,
+    super.usageOrdersThisMonth,
+    super.usageMeasurements,
+    super.currentPeriodEnd,
   });
 
-  factory SubscriptionModel.fromJson(Map<String, dynamic> json) =>
-      SubscriptionModel(
-        plan: SubscriptionPlan.fromString(json['plan'] as String? ?? 'STARTER'),
-        status: json['status'] as String? ?? 'TRIALING',
-        isSuspended: json['isSuspended'] as bool? ?? false,
-        requiresPayment: json['requiresPayment'] as bool? ?? false,
-      );
+  factory SubscriptionModel.fromJson(Map<String, dynamic> json) {
+    final config = json['config'] as Map<String, dynamic>?;
+    final usage = json['usage'] as Map<String, dynamic>?;
+    return SubscriptionModel(
+      plan: SubscriptionPlan.fromString(json['plan'] as String? ?? 'STARTER'),
+      status: json['status'] as String? ?? 'TRIALING',
+      isSuspended: json['isSuspended'] as bool? ?? false,
+      requiresPayment: json['requiresPayment'] as bool? ?? false,
+      configName: config?['name'] as String?,
+      priceNgn: (config?['priceNgn'] as num?)?.toInt(),
+      maxCustomers: config?['maxCustomers'] as int?,
+      maxOrdersPerMonth: config?['maxOrdersPerMonth'] as int?,
+      usageCustomers: usage?['customers'] as int?,
+      usageOrdersThisMonth: usage?['ordersThisMonth'] as int?,
+      usageMeasurements: usage?['measurements'] as int?,
+      currentPeriodEnd: json['currentPeriodEnd'] != null
+          ? DateTime.tryParse(json['currentPeriodEnd'] as String)
+          : null,
+    );
+  }
 }
 
 class MeasurementFieldModel extends MeasurementFieldEntity {
@@ -310,5 +331,33 @@ class DiscountModel extends DiscountEntity {
         validUntil: json['validUntil'] != null
             ? DateTime.tryParse(json['validUntil'] as String)
             : null,
+      );
+}
+
+class StyleModel extends StyleEntity {
+  const StyleModel({
+    required super.id,
+    required super.name,
+    required super.category,
+    super.description,
+    super.photoUrls,
+    super.videoUrls,
+    super.basePrice,
+    super.isActive,
+  });
+
+  factory StyleModel.fromJson(Map<String, dynamic> json) => StyleModel(
+        id: json['id'] as String,
+        name: json['name'] as String? ?? '',
+        category: json['category'] as String? ?? '',
+        description: json['description'] as String?,
+        photoUrls: (json['photoUrls'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        videoUrls: (json['videoUrls'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        basePrice: (json['basePrice'] as num?)?.toDouble(),
+        isActive: json['isActive'] as bool? ?? true,
       );
 }

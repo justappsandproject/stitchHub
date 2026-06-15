@@ -14,7 +14,16 @@ import { randomBytes } from 'crypto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadsService } from './uploads.service';
 
-const ALLOWED = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const ALLOWED = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.gif',
+  '.mp4',
+  '.webm',
+  '.mov',
+]);
 
 @ApiTags('Uploads')
 @Controller('uploads')
@@ -34,12 +43,14 @@ export class UploadsController {
           cb(null, `${Date.now()}-${randomBytes(8).toString('hex')}${ext}`);
         },
       }),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: 50 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         const ext = extname(file.originalname).toLowerCase();
         if (!ALLOWED.has(ext)) {
           return cb(
-            new BadRequestException('Only JPG, PNG, WEBP, and GIF are allowed'),
+            new BadRequestException(
+              'Only JPG, PNG, WEBP, GIF, MP4, WEBM, and MOV are allowed',
+            ),
             false,
           );
         }

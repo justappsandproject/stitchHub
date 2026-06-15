@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { OrderStatus, Prisma, UserRole } from '@prisma/client';
 import { ORDER_STATUS_PROGRESS } from '@stitchhub/shared';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
@@ -28,15 +33,40 @@ export class OrdersService {
     return `ORD-${year}-${String(count + 1).padStart(5, '0')}`;
   }
 
-  async create(tenantId: string, dto: CreateOrderDto) {
+  async create(tenantId: string, dto: CreateOrderDto, user?: JwtPayload) {
     await this.subscriptions.assertCanCreateOrder(tenantId);
 
+    let customerId = dto.customerId;
+    let subtotalAmount = dto.totalAmount;
+
+    if (user?.role === UserRole.CUSTOMER) {
+      customerId = (await resolveCustomerId(this.prisma, user)) ?? undefined;
+      if (!customerId) {
+        throw new ForbiddenException('No customer profile linked to this account');
+      }
+      if (!dto.styleId) {
+        throw new BadRequestException('Style is required to place an order');
+      }
+      const style = await this.prisma.style.findFirst({
+        where: { id: dto.styleId, tenantId, isActive: true },
+      });
+      if (!style) throw new NotFoundException('Style not found');
+      subtotalAmount =
+        dto.totalAmount ?? (style.basePrice ? Number(style.basePrice) : 0);
+      if (subtotalAmount <= 0) {
+        throw new BadRequestException('This style has no price set yet');
+      }
+    } else if (!customerId) {
+      throw new BadRequestException('Customer is required');
+    } else if (subtotalAmount == null || subtotalAmount < 0) {
+      throw new BadRequestException('Total amount is required');
+    }
+
     const customer = await this.prisma.customer.findFirst({
-      where: { id: dto.customerId, tenantId },
+      where: { id: customerId, tenantId },
     });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    const subtotalAmount = dto.totalAmount;
     let discountId: string | undefined;
     let discountAmount = 0;
     let totalAmount = subtotalAmount;
@@ -45,7 +75,7 @@ export class OrdersService {
       const validation = await this.discounts.validate(tenantId, {
         code: dto.discountCode,
         orderAmount: subtotalAmount,
-        customerId: dto.customerId,
+        customerId,
       });
       if (!validation.valid || !validation.discountId) {
         throw new BadRequestException(validation.message ?? 'Invalid discount code');
@@ -62,7 +92,7 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         tenantId,
-        customerId: dto.customerId,
+        customerId,
         styleId: dto.styleId,
         orderNumber,
         fabric: dto.fabric,

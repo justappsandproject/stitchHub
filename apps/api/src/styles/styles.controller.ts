@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -17,31 +18,15 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
-import {
-  CreateOrderDto,
-  OrderQueryDto,
-  UpdateOrderStatusDto,
-} from './dto/order.dto';
-import { OrdersService } from './orders.service';
+import { CreateStyleDto, StyleQueryDto, UpdateStyleDto } from './dto/style.dto';
+import { StylesService } from './styles.service';
 
-@ApiTags('Orders')
-@Controller('orders')
+@ApiTags('Styles')
+@Controller('styles')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 @ApiBearerAuth()
-export class OrdersController {
-  constructor(private ordersService: OrdersService) {}
-
-  @Post()
-  @Roles(
-    UserRole.TENANT_OWNER,
-    UserRole.MANAGER,
-    UserRole.TAILOR,
-    UserRole.CUSTOMER,
-  )
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateOrderDto) {
-    const tenantId = resolveTenantId(user);
-    return this.ordersService.create(tenantId, dto, user);
-  }
+export class StylesController {
+  constructor(private stylesService: StylesService) {}
 
   @Get()
   @Roles(
@@ -53,23 +38,10 @@ export class OrdersController {
     UserRole.APPRENTICE,
     UserRole.CUSTOMER,
   )
-  findAll(@CurrentUser() user: JwtPayload, @Query() query: OrderQueryDto) {
+  findAll(@CurrentUser() user: JwtPayload, @Query() query: StyleQueryDto) {
     const tenantId = resolveTenantId(user);
-    return this.ordersService.findAll(tenantId, query, user);
-  }
-
-  @Get('kanban')
-  @Roles(
-    UserRole.TENANT_OWNER,
-    UserRole.MANAGER,
-    UserRole.TAILOR,
-    UserRole.CUTTER,
-    UserRole.FINISHER,
-    UserRole.APPRENTICE,
-  )
-  findKanban(@CurrentUser() user: JwtPayload) {
-    const tenantId = resolveTenantId(user);
-    return this.ordersService.findKanban(tenantId);
+    const activeOnly = user.role === UserRole.CUSTOMER;
+    return this.stylesService.findAll(tenantId, query, activeOnly);
   }
 
   @Get(':id')
@@ -84,23 +56,32 @@ export class OrdersController {
   )
   findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     const tenantId = resolveTenantId(user);
-    return this.ordersService.findOne(tenantId, id, user);
+    const activeOnly = user.role === UserRole.CUSTOMER;
+    return this.stylesService.findOne(tenantId, id, activeOnly);
   }
 
-  @Patch(':id/status')
-  @Roles(
-    UserRole.TENANT_OWNER,
-    UserRole.MANAGER,
-    UserRole.TAILOR,
-    UserRole.CUTTER,
-    UserRole.FINISHER,
-  )
-  updateStatus(
+  @Post()
+  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateStyleDto) {
+    const tenantId = resolveTenantId(user);
+    return this.stylesService.create(tenantId, dto);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
+  update(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() dto: UpdateOrderStatusDto,
+    @Body() dto: UpdateStyleDto,
   ) {
     const tenantId = resolveTenantId(user);
-    return this.ordersService.updateStatus(tenantId, id, dto, user.sub);
+    return this.stylesService.update(tenantId, id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
+  remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const tenantId = resolveTenantId(user);
+    return this.stylesService.remove(tenantId, id);
   }
 }

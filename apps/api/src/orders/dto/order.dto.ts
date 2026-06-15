@@ -11,10 +11,10 @@ import {
 } from 'class-validator';
 
 export class CreateOrderDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  customerId: string;
+  customerId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -41,10 +41,11 @@ export class CreateOrderDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  totalAmount: number;
+  totalAmount?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

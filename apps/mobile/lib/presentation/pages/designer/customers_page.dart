@@ -149,6 +149,10 @@ class _CustomersPageState extends State<CustomersPage> {
       onNavigate: _navigate,
       unreadMessages: 0,
       actions: [
+        IconButton(
+          onPressed: () => context.push(AppRouter.designerStyles),
+          icon: const Icon(Icons.palette_outlined),
+        ),
         IconButton(onPressed: _showCreateDialog, icon: const Icon(Icons.person_add_outlined)),
       ],
       body: Column(
@@ -200,9 +204,7 @@ class _CustomersPageState extends State<CustomersPage> {
                               title: Text(customer.fullName),
                               subtitle: Text('${customer.phone}${customer.email != null ? '\n${customer.email}' : ''}'),
                               trailing: customer.isVip ? const Chip(label: Text('VIP')) : null,
-                              onTap: () => context.push(
-                                '${AppRouter.designerMeasurements}?customerId=${customer.id}&name=${Uri.encodeComponent(customer.fullName)}',
-                              ),
+                              onTap: () => context.push('${AppRouter.designerCustomerDetail}/${customer.id}'),
                             ),
                           );
                         },

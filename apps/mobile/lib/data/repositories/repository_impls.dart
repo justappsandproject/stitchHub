@@ -306,6 +306,11 @@ class CustomersRepositoryImpl implements CustomersRepository {
     final json = await _apiClient.post('/customers', data: data);
     return CustomerModel.fromJson(json);
   }
+
+  @override
+  Future<Map<String, dynamic>> getCustomerDetail(String id) async {
+    return _apiClient.get('/customers/$id');
+  }
 }
 
 class DashboardRepositoryImpl implements DashboardRepository {
@@ -369,24 +374,25 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
     if (summary.containsKey('totalCustomers')) {
       return DashboardSummary(
-        title: 'Atelier Dashboard',
+        title: 'Dashboard',
         stats: [
           DashboardStat(label: 'Customers', value: summary['totalCustomers'] ?? 0),
           DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
           DashboardStat(label: 'Active Orders', value: summary['activeOrders'] ?? 0),
-          DashboardStat(label: 'Portfolio', value: summary['portfolioCount'] ?? 0),
-          DashboardStat(label: 'Promos', value: summary['activeDiscounts'] ?? 0),
           DashboardStat(
             label: 'Revenue',
             value: summary['totalRevenue'] ?? 0,
             isCurrency: true,
           ),
+          DashboardStat(
+            label: 'Outstanding',
+            value: summary['outstandingBalance'] ?? 0,
+            isCurrency: true,
+          ),
+          DashboardStat(label: 'Delivered', value: summary['deliveredOrders'] ?? 0),
         ],
         recentOrders: recentOrders,
-        recentPortfolio: recentPortfolio,
         ordersByStatus: ordersByStatus,
-        portfolioCount: summary['portfolioCount'] as int?,
-        activeDiscounts: summary['activeDiscounts'] as int?,
       );
     }
 
@@ -497,6 +503,44 @@ class DiscountsRepositoryImpl implements DiscountsRepository {
       name: json['name'] as String?,
       message: json['message'] as String?,
     );
+  }
+}
+
+class StylesRepositoryImpl implements StylesRepository {
+  StylesRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<List<StyleEntity>> getStyles({String? query}) async {
+    final list = await _apiClient.getList(
+      '/styles',
+      queryParameters: query != null && query.isNotEmpty ? {'q': query} : null,
+    );
+    return list.cast<Map<String, dynamic>>().map(StyleModel.fromJson).toList();
+  }
+
+  @override
+  Future<StyleEntity> getStyle(String id) async {
+    final json = await _apiClient.get('/styles/$id');
+    return StyleModel.fromJson(json);
+  }
+
+  @override
+  Future<StyleEntity> createStyle(Map<String, dynamic> data) async {
+    final json = await _apiClient.post('/styles', data: data);
+    return StyleModel.fromJson(json);
+  }
+
+  @override
+  Future<StyleEntity> updateStyle(String id, Map<String, dynamic> data) async {
+    final json = await _apiClient.patch('/styles/$id', data: data);
+    return StyleModel.fromJson(json);
+  }
+
+  @override
+  Future<void> deleteStyle(String id) async {
+    await _apiClient.delete('/styles/$id');
   }
 }
 

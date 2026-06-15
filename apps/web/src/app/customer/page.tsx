@@ -94,9 +94,14 @@ export default function CustomerHomePage() {
             Track your orders and payments with your fashion house
           </p>
         </div>
-        <Button asChild>
-          <Link href="/customer/orders">View all orders</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/customer/styles">Browse styles</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/customer/orders">View all orders</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

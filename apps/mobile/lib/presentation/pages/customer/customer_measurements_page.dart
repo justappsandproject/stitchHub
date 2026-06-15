@@ -27,10 +27,12 @@ class _CustomerMeasurementsPageState extends State<CustomerMeasurementsPage> {
       case 0:
         context.go(AppRouter.customerHome);
       case 1:
-        context.go(AppRouter.customerOrders);
+        context.go(AppRouter.customerStyles);
       case 2:
-        context.go(AppRouter.customerMeasurements);
+        context.go(AppRouter.customerOrders);
       case 3:
+        context.go(AppRouter.customerMeasurements);
+      case 4:
         context.go(AppRouter.settings);
     }
   }
@@ -39,7 +41,7 @@ class _CustomerMeasurementsPageState extends State<CustomerMeasurementsPage> {
   Widget build(BuildContext context) {
     return CustomerShell(
       title: 'My Measurements',
-      selectedIndex: 2,
+      selectedIndex: 3,
       onNavigate: _navigate,
       body: FutureBuilder<List<MeasurementEntity>>(
         future: _future,

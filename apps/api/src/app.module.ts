@@ -8,6 +8,7 @@ import { MeasurementsModule } from './measurements/measurements.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
+import { StylesModule } from './styles/styles.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -32,6 +33,7 @@ import { UploadsModule } from './uploads/uploads.module';
     UploadsModule,
     PortfolioModule,
     DiscountsModule,
+    StylesModule,
   ],
 })
 export class AppModule {}

@@ -94,15 +94,20 @@ class _OrdersPageState extends State<OrdersPage> {
       selectedIndex: 1,
       onNavigate: _navigate,
       unreadMessages: 0,
-      body: Column(
+      body: Row(
         children: [
-          SizedBox(
-            height: 48,
+          Container(
+            width: 108,
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+            ),
             child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _FilterChip(
+                _VerticalFilter(
                   label: 'All',
                   selected: _statusFilter == null,
                   onTap: () => setState(() {
@@ -111,7 +116,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   }),
                 ),
                 ...OrderStatus.values.where((s) => s != OrderStatus.measured).map(
-                      (status) => _FilterChip(
+                      (status) => _VerticalFilter(
                         label: status.value.replaceAll('_', ' '),
                         selected: _statusFilter == status.value,
                         onTap: () => setState(() {
@@ -210,8 +215,8 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
+class _VerticalFilter extends StatelessWidget {
+  const _VerticalFilter({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -223,12 +228,26 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
+    return Material(
+      color: selected
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+              color: selected
+                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -253,10 +272,12 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
       case 0:
         context.go(AppRouter.customerHome);
       case 1:
-        context.go(AppRouter.customerOrders);
+        context.go(AppRouter.customerStyles);
       case 2:
-        context.go(AppRouter.customerMeasurements);
+        context.go(AppRouter.customerOrders);
       case 3:
+        context.go(AppRouter.customerMeasurements);
+      case 4:
         context.go(AppRouter.settings);
     }
   }
@@ -265,7 +286,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
   Widget build(BuildContext context) {
     return CustomerShell(
       title: 'My Orders',
-      selectedIndex: 1,
+      selectedIndex: 2,
       onNavigate: _navigate,
       body: BlocBuilder<OrdersBloc, OrdersState>(
         bloc: sl<OrdersBloc>(),

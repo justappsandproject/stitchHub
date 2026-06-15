@@ -415,3 +415,108 @@ export interface MessageThreadDetail {
   messages: PlatformMessage[];
   unreadCount?: number;
 }
+
+export interface StyleRecord {
+  id: string;
+  name: string;
+  category: string;
+  description?: string | null;
+  photoUrls: string[];
+  videoUrls: string[];
+  basePrice?: number | string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CustomerDetail extends CustomerRecord {
+  gender?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  tags: string[];
+  photoUrl?: string | null;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    lastLoginAt?: string | null;
+  } | null;
+  measurements: Array<{
+    id: string;
+    values: Record<string, number>;
+    notes?: string | null;
+    createdAt: string;
+    template?: { id: string; name: string; category: string };
+  }>;
+  orders: Array<{
+    id: string;
+    orderNumber: string;
+    status: string;
+    totalAmount: number;
+    style?: { id: string; name: string; category: string } | null;
+  }>;
+  _count: { orders: number; measurements: number };
+  tenantPlan?: string;
+  tenantSubscriptionStatus?: string;
+  tenantUsage?: {
+    customers: number;
+    ordersThisMonth: number;
+    measurements: number;
+  };
+}
+
+export interface CustomerRecord {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string | null;
+  isVip: boolean;
+  tags?: string[];
+  _count?: { orders: number; measurements: number };
+}
+
+export const customersApi = {
+  list: (q?: string) =>
+    api<CustomerRecord[]>(
+      `/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`,
+    ),
+  get: (id: string) => api<CustomerDetail>(`/customers/${id}`),
+};
+
+export const stylesApi = {
+  list: (params?: { q?: string; category?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.q) search.set('q', params.q);
+    if (params?.category) search.set('category', params.category);
+    const qs = search.toString();
+    return api<StyleRecord[]>(`/styles${qs ? `?${qs}` : ''}`);
+  },
+  get: (id: string) => api<StyleRecord>(`/styles/${id}`),
+  create: (data: Partial<StyleRecord>) =>
+    api<StyleRecord>('/styles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<StyleRecord>) =>
+    api<StyleRecord>(`/styles/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  remove: (id: string) =>
+    api(`/styles/${id}`, { method: 'DELETE' }),
+};
+
+export const ordersApi = {
+  create: (data: {
+    customerId?: string;
+    styleId?: string;
+    fabric?: string;
+    deliveryDate?: string;
+    priority?: string;
+    notes?: string;
+    totalAmount?: number;
+    depositAmount?: number;
+    discountCode?: string;
+  }) =>
+    api('/orders', { method: 'POST', body: JSON.stringify(data) }),
+};
