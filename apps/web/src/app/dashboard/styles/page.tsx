@@ -119,11 +119,10 @@ export default function StylesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">
-            Styles
+            Style Store
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Showcase designs with photos and videos for customers to browse and
-            order
+            Manage your lookbook — showcase designs with photos and videos
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>

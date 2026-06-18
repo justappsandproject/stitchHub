@@ -40,14 +40,14 @@ export default function CustomerStylesPage() {
         <div className="mb-2 flex items-center gap-2 text-gold">
           <Sparkles className="h-5 w-5" />
           <span className="text-sm font-medium uppercase tracking-wider">
-            Style catalog
+            Lookbook
           </span>
         </div>
         <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Browse styles
+          Lookbook
         </h1>
         <p className="mt-1 text-muted-foreground">
-          Review designs from your fashion house and place an order
+          Browse designs from your fashion house and place an order
         </p>
       </div>
 

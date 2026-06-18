@@ -172,12 +172,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
   final SyncQueue _syncQueue;
 
   @override
-  Future<List<OrderEntity>> getOrders({String? status}) async {
+  Future<List<OrderEntity>> getOrders({String? status, String? customerId}) async {
     if (await _networkInfo.isConnected) {
       try {
+        final params = <String, String>{};
+        if (status != null) params['status'] = status;
+        if (customerId != null) params['customerId'] = customerId;
         final list = await _apiClient.getList(
           '/orders',
-          queryParameters: status != null ? {'status': status} : null,
+          queryParameters: params.isEmpty ? null : params,
         );
         final orders = list
             .cast<Map<String, dynamic>>()
@@ -541,6 +544,56 @@ class StylesRepositoryImpl implements StylesRepository {
   @override
   Future<void> deleteStyle(String id) async {
     await _apiClient.delete('/styles/$id');
+  }
+
+  @override
+  Future<Map<String, dynamic>> tryOn(String styleId, [Map<String, dynamic>? body]) async {
+    return _apiClient.post('/styles/$styleId/try-on', data: body);
+  }
+}
+
+class PaymentsRepositoryImpl implements PaymentsRepository {
+  PaymentsRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<Map<String, dynamic>> createInvoice({
+    required String orderId,
+    required num amount,
+    String? notes,
+    String? dueDate,
+  }) async {
+    return _apiClient.post('/payments/invoices', data: {
+      'orderId': orderId,
+      'amount': amount,
+      if (notes != null) 'notes': notes,
+      if (dueDate != null) 'dueDate': dueDate,
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> createPayment({
+    required num amount,
+    required String method,
+    String? invoiceId,
+    String? notes,
+  }) async {
+    return _apiClient.post('/payments', data: {
+      'amount': amount,
+      'method': method,
+      if (invoiceId != null) 'invoiceId': invoiceId,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getInvoices({String? orderId}) async {
+    final list = await _apiClient.getList(
+      '/payments/invoices',
+      queryParameters: orderId != null ? {'orderId': orderId} : null,
+    );
+    return list.cast<Map<String, dynamic>>();
   }
 }
 

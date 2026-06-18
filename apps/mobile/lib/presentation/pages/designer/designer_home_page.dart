@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
+import 'package:stitchhub_mobile/presentation/blocs/auth/auth_bloc.dart';
 import 'package:stitchhub_mobile/presentation/blocs/dashboard/dashboard_bloc.dart';
 import 'package:stitchhub_mobile/presentation/blocs/messages/messages_bloc.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
@@ -84,13 +86,10 @@ class _DesignerHomePageState extends State<DesignerHomePage> {
                   sl<MessagesBloc>().add(const UnreadCountRequested());
                   await Future<void>.delayed(const Duration(milliseconds: 400));
                 },
-                child: _DashboardBody(
-                  summary: state.summary,
-                  onOpenOrders: () => context.go(AppRouter.designerOrders),
-                ),
+                child: _DashboardBody(summary: state.summary),
               );
             }
-            return const SizedBox.shrink();
+            return const Center(child: CircularProgressIndicator());
           },
         ),
       ),
@@ -99,27 +98,103 @@ class _DesignerHomePageState extends State<DesignerHomePage> {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({
-    required this.summary,
-    required this.onOpenOrders,
-  });
+  const _DashboardBody({required this.summary});
 
   final DashboardSummary summary;
-  final VoidCallback onOpenOrders;
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final name = authState is AuthAuthenticated ? authState.user.firstName : 'there';
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Overview of your fashion business',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          'Good morning, $name',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        Text(
+          DateTime.now().toString().split(' ').first,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 20),
+        buildDashboardGrid(
+          summary,
+          onStatTap: (label) => navigateDashboardStat(context, label),
+        ),
+        const SizedBox(height: 20),
+        Text('Quick actions', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 96,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _QuickAction(
+                icon: Icons.add,
+                label: 'New order',
+                onTap: () => context.push(AppRouter.designerCreateOrder),
               ),
+              _QuickAction(
+                icon: Icons.person_add_outlined,
+                label: 'New client',
+                onTap: () => context.go(AppRouter.designerCustomers),
+              ),
+              _QuickAction(
+                icon: Icons.storefront_outlined,
+                label: 'Style Store',
+                onTap: () => context.go(AppRouter.designerStyles),
+              ),
+              _QuickAction(
+                icon: Icons.payments_outlined,
+                label: 'Billing',
+                onTap: () => context.go(AppRouter.designerBilling),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        buildDashboardGrid(summary),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.go(AppRouter.designerStyles),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.storefront_outlined, color: AppTheme.primary),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Style Store',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        Text(
+                          'Manage lookbook & design collections',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+          ),
+        ),
         if (summary.ordersByStatus.isNotEmpty) ...[
           const SizedBox(height: 24),
           Text(
@@ -130,7 +205,7 @@ class _DashboardBody extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Production pipeline breakdown',
+            'Tap a stage to view orders',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -138,38 +213,43 @@ class _DashboardBody extends StatelessWidget {
           const SizedBox(height: 12),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: summary.ordersByStatus.map((item) {
-                  return Container(
-                    width: (MediaQuery.of(context).size.width - 64) / 2,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).dividerColor),
+                  return Material(
+                    color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: () => context.go(AppRouter.designerOrders),
                       borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.status.replaceAll('_', ' '),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                      child: Container(
+                        width: (MediaQuery.of(context).size.width - 72) / 2,
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.status.replaceAll('_', ' '),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ),
-                          ),
+                            Text(
+                              '${item.count}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: AppTheme.accent,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          '${item.count}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 }).toList(),
@@ -199,44 +279,51 @@ class _DashboardBody extends StatelessWidget {
                   ),
                 ],
               ),
-              TextButton(onPressed: onOpenOrders, child: const Text('View all')),
+              TextButton(
+                onPressed: () => context.go(AppRouter.designerOrders),
+                child: const Text('View all'),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           ...summary.recentOrders.map(
             (order) => Card(
               margin: const EdgeInsets.only(bottom: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => context.go(AppRouter.designerOrders),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.orderNumber,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              order.customerName,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
+                          orderStatusChip(order.status),
+                          const SizedBox(height: 4),
                           Text(
-                            order.orderNumber,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            order.customerName,
+                            formatNgn(order.totalAmount),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        orderStatusChip(order.status),
-                        const SizedBox(height: 4),
-                        Text(
-                          formatNgn(order.totalAmount),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -244,6 +331,48 @@ class _DashboardBody extends StatelessWidget {
         ],
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: AppTheme.accentLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: SizedBox(
+            width: 88,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: AppTheme.navy),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.navy),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

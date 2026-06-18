@@ -87,6 +87,11 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
+  Future<void> _openCreateOrder() async {
+    final created = await context.push<bool>(AppRouter.designerCreateOrder);
+    if (created == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DesignerShell(
@@ -94,7 +99,9 @@ class _OrdersPageState extends State<OrdersPage> {
       selectedIndex: 1,
       onNavigate: _navigate,
       unreadMessages: 0,
-      body: Row(
+      body: Stack(
+        children: [
+          Row(
         children: [
           Container(
             width: 108,
@@ -207,6 +214,17 @@ class _OrdersPageState extends State<OrdersPage> {
                 }
                 return const SizedBox.shrink();
               },
+            ),
+          ),
+        ],
+      ),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton.extended(
+              onPressed: _openCreateOrder,
+              icon: const Icon(Icons.add),
+              label: const Text('New order'),
             ),
           ),
         ],

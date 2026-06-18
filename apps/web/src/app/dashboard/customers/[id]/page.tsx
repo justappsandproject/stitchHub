@@ -183,38 +183,6 @@ export default function CustomerDetailPage() {
             )}
           </CardContent>
         </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Fashion house plan</CardTitle>
-            <CardDescription>
-              Subscription context for this atelier
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Plan</p>
-              <p className="text-lg font-semibold">
-                {customer.tenantPlan ?? '—'}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Status</p>
-              <p className="text-lg font-semibold">
-                {customer.tenantSubscriptionStatus?.replace(/_/g, ' ') ?? '—'}
-              </p>
-            </div>
-            {customer.tenantUsage && (
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Usage</p>
-                <p className="text-sm">
-                  {customer.tenantUsage.customers} customers ·{' '}
-                  {customer.tenantUsage.ordersThisMonth} orders/mo
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       <Card>

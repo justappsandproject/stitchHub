@@ -254,6 +254,18 @@ export const messagesApi = {
 };
 
 export const billingApi = {
+  getCurrent: () =>
+    api<{
+      plan: string;
+      status: string;
+      configName?: string;
+      priceNgn?: number;
+      usageCustomers?: number;
+      maxCustomers?: number;
+      usageOrdersThisMonth?: number;
+      maxOrdersPerMonth?: number;
+    }>('/subscriptions/current'),
+
   getPaystackConfig: () =>
     api<{ enabled: boolean; publicKey: string | null }>(
       '/subscriptions/paystack/config',
@@ -504,6 +516,55 @@ export const stylesApi = {
     }),
   remove: (id: string) =>
     api(`/styles/${id}`, { method: 'DELETE' }),
+  tryOn: (id: string, body?: Record<string, string>) =>
+    api<{
+      tryOnImageUrl: string | null;
+      previewUrl: string | null;
+      placeholder: boolean;
+      disclaimer: string;
+      integrationNote?: string;
+      styleName: string;
+      generatedAt: string;
+      expiresAt: string;
+    }>(`/styles/${id}/try-on`, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  lookbook: (params?: {
+    tenantSlug?: string;
+    fashionHouseId?: string;
+    category?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const search = new URLSearchParams();
+    if (params?.tenantSlug) search.set('tenantSlug', params.tenantSlug);
+    if (params?.fashionHouseId) search.set('fashionHouseId', params.fashionHouseId);
+    if (params?.category) search.set('category', params.category);
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    const qs = search.toString();
+    return api<{ items: StyleRecord[]; total: number; page: number; limit: number }>(
+      `/styles/lookbook${qs ? `?${qs}` : ''}`,
+    );
+  },
+};
+
+export const paymentsApi = {
+  createInvoice: (data: {
+    orderId: string;
+    amount: number;
+    dueDate?: string;
+    notes?: string;
+  }) =>
+    api('/payments/invoices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  listInvoices: (orderId?: string) =>
+    api<Array<Record<string, unknown>>>(
+      `/payments/invoices${orderId ? `?orderId=${orderId}` : ''}`,
+    ),
 };
 
 export const ordersApi = {

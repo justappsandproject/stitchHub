@@ -56,10 +56,10 @@ class _StitchHubAppState extends State<StitchHubApp> {
       providers: [
         BlocProvider.value(value: _authBloc),
         BlocProvider.value(value: sl<SyncBloc>()),
-        BlocProvider(create: (_) => sl<OrdersBloc>()),
-        BlocProvider(create: (_) => sl<DashboardBloc>()),
-        BlocProvider(create: (_) => sl<MessagesBloc>()),
-        BlocProvider(create: (_) => sl<BillingBloc>()),
+        BlocProvider.value(value: sl<OrdersBloc>()),
+        BlocProvider.value(value: sl<DashboardBloc>()),
+        BlocProvider.value(value: sl<MessagesBloc>()),
+        BlocProvider.value(value: sl<BillingBloc>()),
       ],
       child: MaterialApp.router(
         title: 'StitchHub',

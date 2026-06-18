@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/constants/enums.dart';
 import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
@@ -163,7 +164,7 @@ class CustomerShell extends StatelessWidget {
         onDestinationSelected: onNavigate,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.palette_outlined), label: 'Styles'),
+          NavigationDestination(icon: Icon(Icons.palette_outlined), label: 'Lookbook'),
           NavigationDestination(icon: Icon(Icons.checkroom_outlined), label: 'Orders'),
           NavigationDestination(icon: Icon(Icons.straighten), label: 'Measure'),
           NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
@@ -173,7 +174,17 @@ class CustomerShell extends StatelessWidget {
   }
 }
 
-Widget buildDashboardGrid(DashboardSummary summary) {
+Widget buildDashboardGrid(
+  DashboardSummary summary, {
+  void Function(String label)? onStatTap,
+}) {
+  IconData? iconFor(String label) => switch (label) {
+        'Customers' => Icons.people_outline,
+        'Total Orders' || 'Active Orders' || 'Delivered' => Icons.shopping_bag_outlined,
+        'Revenue' || 'Outstanding' => Icons.payments_outlined,
+        _ => Icons.insights_outlined,
+      };
+
   return GridView.builder(
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
@@ -181,7 +192,7 @@ Widget buildDashboardGrid(DashboardSummary summary) {
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.4,
+      childAspectRatio: 1.35,
     ),
     itemCount: summary.stats.length,
     itemBuilder: (context, index) {
@@ -189,9 +200,27 @@ Widget buildDashboardGrid(DashboardSummary summary) {
       return StatCard(
         label: stat.label,
         value: stat.isCurrency ? formatNgn(stat.value) : '${stat.value}',
+        icon: iconFor(stat.label),
+        onTap: onStatTap != null ? () => onStatTap(stat.label) : null,
       );
     },
   );
+}
+
+void navigateDashboardStat(BuildContext context, String label) {
+  switch (label) {
+    case 'Customers':
+      context.go('/designer/customers');
+    case 'Total Orders':
+    case 'Active Orders':
+    case 'Delivered':
+      context.go('/designer/orders');
+    case 'Revenue':
+    case 'Outstanding':
+      context.go('/designer/billing');
+    default:
+      break;
+  }
 }
 
 Widget orderStatusChip(OrderStatus status) {
@@ -199,7 +228,7 @@ Widget orderStatusChip(OrderStatus status) {
     OrderStatus.delivered => Colors.green,
     OrderStatus.cancelled => Colors.red,
     OrderStatus.ready => Colors.teal,
-    _ => AppTheme.primary,
+    _ => AppTheme.accent,
   };
 
   return Container(

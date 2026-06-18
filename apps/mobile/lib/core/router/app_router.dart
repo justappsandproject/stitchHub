@@ -24,8 +24,10 @@ import 'package:stitchhub_mobile/presentation/pages/designer/messages_page.dart'
 import 'package:stitchhub_mobile/presentation/pages/customer/customer_portfolio_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/customer/customer_styles_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/customer/customer_style_detail_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/create_order_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/customer_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_styles_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/shared/plan_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
 
@@ -56,6 +58,9 @@ class AppRouter {
   static const customerStyles = '/customer/styles';
   static const customerPortfolio = '/customer/portfolio';
   static const settings = '/settings';
+
+  static const designerCreateOrder = '/designer/orders/new';
+  static const planDetail = '/settings/plan';
 
   static GoRouter create({
     AuthUserResolver? user,
@@ -109,11 +114,13 @@ class AppRouter {
           builder: (_, __) => const RegisterCustomerPage(),
         ),
         GoRoute(path: settings, builder: (_, __) => const SettingsPage()),
+        GoRoute(path: planDetail, builder: (_, __) => const PlanDetailPage()),
         GoRoute(path: adminHome, builder: (_, __) => const AdminHomePage()),
         GoRoute(path: adminTenants, builder: (_, __) => const AdminTenantsPage()),
         GoRoute(path: adminMessages, builder: (_, __) => const AdminMessagesPage()),
         GoRoute(path: designerHome, builder: (_, __) => const DesignerHomePage()),
         GoRoute(path: designerOrders, builder: (_, __) => const OrdersPage()),
+        GoRoute(path: designerCreateOrder, builder: (_, __) => const CreateOrderPage()),
         GoRoute(path: designerCustomers, builder: (_, __) => const CustomersPage()),
         GoRoute(
           path: designerMeasurements,

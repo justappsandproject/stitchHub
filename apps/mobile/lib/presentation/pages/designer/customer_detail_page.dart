@@ -128,16 +128,6 @@ class _CustomerDetailBody extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 20),
-        _SectionCard(
-          title: 'Fashion house plan',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Plan: ${data['tenantPlan'] ?? '—'}'),
-              Text('Status: ${(data['tenantSubscriptionStatus'] as String?)?.replaceAll('_', ' ') ?? '—'}'),
-            ],
-          ),
-        ),
         if (data['address'] != null || data['notes'] != null)
           _SectionCard(
             title: 'Profile',

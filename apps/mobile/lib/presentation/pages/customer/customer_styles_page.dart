@@ -8,6 +8,7 @@ import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
+import 'package:stitchhub_mobile/presentation/widgets/empty_state.dart';
 
 class CustomerStylesPage extends StatefulWidget {
   const CustomerStylesPage({super.key});
@@ -54,13 +55,17 @@ class _CustomerStylesPageState extends State<CustomerStylesPage> {
   @override
   Widget build(BuildContext context) {
     return CustomerShell(
-      title: 'Browse styles',
+      title: 'Lookbook',
       selectedIndex: 1,
       onNavigate: _navigate,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _styles.isEmpty
-              ? const Center(child: Text('No styles available yet'))
+              ? const EmptyState(
+                  title: 'Lookbook coming soon',
+                  message: 'Your fashion house has not published styles yet. Check back soon!',
+                  icon: Icons.auto_awesome_outlined,
+                )
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

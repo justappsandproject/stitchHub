@@ -9,6 +9,7 @@ import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
+import 'package:stitchhub_mobile/presentation/widgets/empty_state.dart';
 
 class DesignerStylesPage extends StatefulWidget {
   const DesignerStylesPage({super.key});
@@ -137,7 +138,7 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
   @override
   Widget build(BuildContext context) {
     return DesignerShell(
-      title: 'Styles',
+      title: 'Style Store',
       selectedIndex: 2,
       onNavigate: _navigate,
       unreadMessages: 0,
@@ -147,15 +148,12 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _styles.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('No styles yet'),
-                      const SizedBox(height: 12),
-                      FilledButton(onPressed: _showAddSheet, child: const Text('Add style')),
-                    ],
-                  ),
+              ? EmptyState(
+                  title: 'No styles yet',
+                  message: 'Add designs to your lookbook for customers to browse.',
+                  icon: Icons.storefront_outlined,
+                  actionLabel: 'Add style',
+                  onAction: _showAddSheet,
                 )
               : GridView.builder(
                   padding: const EdgeInsets.all(16),

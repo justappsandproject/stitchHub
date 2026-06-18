@@ -22,6 +22,7 @@ class _CustomerStyleDetailPageState extends State<CustomerStyleDetailPage> {
   final _notesController = TextEditingController();
   final _promoController = TextEditingController();
   bool _ordering = false;
+  bool _tryingOn = false;
 
   @override
   void initState() {
@@ -67,6 +68,154 @@ class _CustomerStyleDetailPageState extends State<CustomerStyleDetailPage> {
       );
     } finally {
       if (mounted) setState(() => _ordering = false);
+    }
+  }
+
+  Future<Map<String, String>?> _showTryOnPreferences() async {
+    var skinTone = 'medium';
+    var bodyType = 'average';
+    var gender = 'unisex';
+
+    return showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Try-on preferences',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: skinTone,
+                    decoration: const InputDecoration(labelText: 'Skin tone'),
+                    items: const [
+                      DropdownMenuItem(value: 'light', child: Text('Light')),
+                      DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                      DropdownMenuItem(value: 'medium-dark', child: Text('Medium dark')),
+                      DropdownMenuItem(value: 'dark', child: Text('Dark')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setSheetState(() => skinTone = v);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: bodyType,
+                    decoration: const InputDecoration(labelText: 'Body type'),
+                    items: const [
+                      DropdownMenuItem(value: 'slim', child: Text('Slim')),
+                      DropdownMenuItem(value: 'athletic', child: Text('Athletic')),
+                      DropdownMenuItem(value: 'average', child: Text('Average')),
+                      DropdownMenuItem(value: 'plus', child: Text('Plus')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setSheetState(() => bodyType = v);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: gender,
+                    decoration: const InputDecoration(labelText: 'Gender'),
+                    items: const [
+                      DropdownMenuItem(value: 'female', child: Text('Female')),
+                      DropdownMenuItem(value: 'male', child: Text('Male')),
+                      DropdownMenuItem(value: 'unisex', child: Text('Unisex')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setSheetState(() => gender = v);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, {
+                      'skinTone': skinTone,
+                      'bodyType': bodyType,
+                      'gender': gender,
+                    }),
+                    child: const Text('Generate preview'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _tryOn() async {
+    if (_style == null) return;
+    final prefs = await _showTryOnPreferences();
+    if (prefs == null || !mounted) return;
+
+    setState(() => _tryingOn = true);
+    try {
+      final result = await sl<StylesRepository>().tryOn(_style!.id, prefs);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('AI Try-On Preview'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (result['previewUrl'] != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: result['previewUrl'] as String,
+                      height: 280,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Text(
+                  result['disclaimer'] as String? ??
+                      'This is a simulated preview based on your measurements.',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+                if (result['placeholder'] == true) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    result['integrationNote'] as String? ?? '',
+                    style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _tryingOn = false);
     }
   }
 
@@ -168,6 +317,18 @@ class _CustomerStyleDetailPageState extends State<CustomerStyleDetailPage> {
           const SizedBox(height: 12),
           Text(style.description!),
         ],
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: _tryingOn ? null : _tryOn,
+          icon: _tryingOn
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.auto_awesome),
+          label: Text(_tryingOn ? 'Generating preview...' : 'Try it on'),
+        ),
         const SizedBox(height: 20),
         Card(
           child: Padding(

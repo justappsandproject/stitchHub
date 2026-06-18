@@ -35,7 +35,7 @@ abstract class MeasurementsRepository {
 }
 
 abstract class OrdersRepository {
-  Future<List<OrderEntity>> getOrders({String? status});
+  Future<List<OrderEntity>> getOrders({String? status, String? customerId});
   Future<OrderEntity?> getOrder(String id);
   Future<OrderEntity> createOrder(Map<String, dynamic> data);
   Future<void> updateStatus(String orderId, String status);
@@ -84,6 +84,23 @@ abstract class StylesRepository {
   Future<StyleEntity> createStyle(Map<String, dynamic> data);
   Future<StyleEntity> updateStyle(String id, Map<String, dynamic> data);
   Future<void> deleteStyle(String id);
+  Future<Map<String, dynamic>> tryOn(String styleId, [Map<String, dynamic>? body]);
+}
+
+abstract class PaymentsRepository {
+  Future<Map<String, dynamic>> createInvoice({
+    required String orderId,
+    required num amount,
+    String? notes,
+    String? dueDate,
+  });
+  Future<Map<String, dynamic>> createPayment({
+    required num amount,
+    required String method,
+    String? invoiceId,
+    String? notes,
+  });
+  Future<List<Map<String, dynamic>>> getInvoices({String? orderId});
 }
 
 abstract class SubscriptionRepository {

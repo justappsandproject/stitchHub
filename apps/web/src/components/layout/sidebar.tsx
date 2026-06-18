@@ -25,7 +25,7 @@ const navItems = [
   { href: '/dashboard/customers', label: 'Customers', icon: Users },
   { href: '/dashboard/measurements', label: 'Measurements', icon: Ruler },
   { href: '/dashboard/orders', label: 'Orders', icon: ShoppingBag },
-  { href: '/dashboard/styles', label: 'Styles', icon: Palette },
+  { href: '/dashboard/styles', label: 'Style Store', icon: Palette },
   { href: '/dashboard/production', label: 'Production', icon: Scissors },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
   { href: '/dashboard/billing', label: 'Billing', icon: Gem },

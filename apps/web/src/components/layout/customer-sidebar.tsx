@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/customer', label: 'Home', icon: LayoutDashboard },
-  { href: '/customer/styles', label: 'Styles', icon: Palette },
+  { href: '/customer/styles', label: 'Lookbook', icon: Palette },
   { href: '/customer/orders', label: 'My Orders', icon: ShoppingBag },
   { href: '/customer/measurements', label: 'Measurements', icon: Ruler },
   { href: '/customer/settings', label: 'Settings', icon: Settings },

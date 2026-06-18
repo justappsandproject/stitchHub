@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
   Card,
@@ -18,12 +19,12 @@ import {
 import { dashboardApi, type DashboardData } from '@/lib/api';
 
 const statConfig = [
-  { key: 'totalCustomers', label: 'Customers', icon: Users },
-  { key: 'totalOrders', label: 'Total Orders', icon: ShoppingBag },
-  { key: 'activeOrders', label: 'Active Orders', icon: Package },
-  { key: 'totalRevenue', label: 'Revenue', icon: TrendingUp, format: 'currency' },
-  { key: 'outstandingBalance', label: 'Outstanding', icon: CreditCard, format: 'currency' },
-  { key: 'deliveredOrders', label: 'Delivered', icon: Package },
+  { key: 'totalCustomers', label: 'Customers', icon: Users, href: '/dashboard/customers' },
+  { key: 'totalOrders', label: 'Total Orders', icon: ShoppingBag, href: '/dashboard/orders' },
+  { key: 'activeOrders', label: 'Active Orders', icon: Package, href: '/dashboard/orders' },
+  { key: 'totalRevenue', label: 'Revenue', icon: TrendingUp, format: 'currency' as const, href: '/dashboard/payments' },
+  { key: 'outstandingBalance', label: 'Outstanding', icon: CreditCard, format: 'currency' as const, href: '/dashboard/payments' },
+  { key: 'deliveredOrders', label: 'Delivered', icon: Package, href: '/dashboard/orders' },
 ] as const;
 
 export default function DashboardPage() {
@@ -97,21 +98,23 @@ export default function DashboardPage() {
             );
 
           return (
-            <Card key={stat.key} className="transition-shadow hover:shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.label}
-                </CardTitle>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10 text-gold">
-                  <Icon className="h-4 w-4" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="font-display text-3xl font-semibold">
-                  {display}
-                </div>
-              </CardContent>
-            </Card>
+            <Link key={stat.key} href={stat.href} className="block">
+              <Card className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {stat.label}
+                  </CardTitle>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/10 text-gold">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-display text-3xl font-semibold">
+                    {display}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>

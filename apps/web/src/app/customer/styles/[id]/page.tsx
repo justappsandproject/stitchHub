@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -27,6 +27,18 @@ export default function CustomerStyleDetailPage() {
   const [notes, setNotes] = useState('');
   const [discountCode, setDiscountCode] = useState('');
   const [ordering, setOrdering] = useState(false);
+  const [tryingOn, setTryingOn] = useState(false);
+  const [tryOnPrefs, setTryOnPrefs] = useState({
+    skinTone: 'medium',
+    bodyType: 'average',
+    gender: 'unisex',
+  });
+  const [tryOnPreview, setTryOnPreview] = useState<{
+    previewUrl: string | null;
+    disclaimer: string;
+    placeholder?: boolean;
+    integrationNote?: string;
+  } | null>(null);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
@@ -52,6 +64,21 @@ export default function CustomerStyleDetailPage() {
         ...style.videoUrls.map((url) => ({ type: 'video' as const, url })),
       ]
     : [];
+
+  async function handleTryOn() {
+    if (!style) return;
+    setError('');
+    setTryingOn(true);
+    try {
+      const result = await stylesApi.tryOn(style.id, tryOnPrefs);
+      setTryOnPreview(result);
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr.message ?? 'Try-on preview failed');
+    } finally {
+      setTryingOn(false);
+    }
+  }
 
   async function handleOrder() {
     if (!style) return;
@@ -173,6 +200,99 @@ export default function CustomerStyleDetailPage() {
             <p className="text-muted-foreground leading-relaxed">
               {style.description}
             </p>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Try-on preferences</CardTitle>
+              <CardDescription>
+                Adjust how the AI preview is generated
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="skinTone">Skin tone</Label>
+                <select
+                  id="skinTone"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={tryOnPrefs.skinTone}
+                  onChange={(e) =>
+                    setTryOnPrefs((p) => ({ ...p, skinTone: e.target.value }))
+                  }
+                >
+                  <option value="light">Light</option>
+                  <option value="medium">Medium</option>
+                  <option value="medium-dark">Medium dark</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bodyType">Body type</Label>
+                <select
+                  id="bodyType"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={tryOnPrefs.bodyType}
+                  onChange={(e) =>
+                    setTryOnPrefs((p) => ({ ...p, bodyType: e.target.value }))
+                  }
+                >
+                  <option value="slim">Slim</option>
+                  <option value="athletic">Athletic</option>
+                  <option value="average">Average</option>
+                  <option value="plus">Plus</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <select
+                  id="gender"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={tryOnPrefs.gender}
+                  onChange={(e) =>
+                    setTryOnPrefs((p) => ({ ...p, gender: e.target.value }))
+                  }
+                >
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="unisex">Unisex</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            disabled={tryingOn}
+            onClick={handleTryOn}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {tryingOn ? 'Generating preview...' : 'Try it on'}
+          </Button>
+
+          {tryOnPreview && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-lg">AI Try-On Preview</CardTitle>
+                <CardDescription>{tryOnPreview.disclaimer}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {tryOnPreview.previewUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={tryOnPreview.previewUrl}
+                    alt="Try-on preview"
+                    className="w-full rounded-xl border object-cover"
+                  />
+                )}
+                {tryOnPreview.placeholder && tryOnPreview.integrationNote && (
+                  <p className="text-xs text-muted-foreground">
+                    {tryOnPreview.integrationNote}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           <Card>

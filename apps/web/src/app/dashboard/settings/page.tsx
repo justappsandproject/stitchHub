@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { authApi, uploadFile } from '@/lib/api';
+import Link from 'next/link';
+import { authApi, billingApi, uploadFile } from '@/lib/api';
 import { saveUser } from '@/lib/session';
 
 export default function DashboardSettingsPage() {
@@ -31,6 +32,16 @@ export default function DashboardSettingsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState<{
+    plan: string;
+    status: string;
+    configName?: string;
+    priceNgn?: number;
+    usageCustomers?: number;
+    maxCustomers?: number;
+    usageOrdersThisMonth?: number;
+    maxOrdersPerMonth?: number;
+  } | null>(null);
 
   useEffect(() => {
     authApi.getProfile().then((profile) => {
@@ -40,6 +51,7 @@ export default function DashboardSettingsPage() {
       setEmail(profile.email);
       setPhotoUrl(profile.photoUrl ?? '');
     }).catch(console.error);
+    billingApi.getCurrent().then(setPlan).catch(console.error);
   }, []);
 
   async function handleProfileSubmit(e: React.FormEvent) {
@@ -160,6 +172,47 @@ export default function DashboardSettingsPage() {
               {profileLoading ? 'Saving...' : 'Save profile'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Fashion house plan</CardTitle>
+          <CardDescription>Your atelier subscription and usage</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {plan ? (
+            <>
+              <p className="text-lg font-semibold">
+                {plan.configName ?? plan.plan} plan
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Status: {plan.status.replace(/_/g, ' ')}
+              </p>
+              {plan.priceNgn != null && (
+                <p className="text-sm">₦{plan.priceNgn.toLocaleString()}/month</p>
+              )}
+              {plan.usageCustomers != null && (
+                <p className="text-sm">
+                  Customers: {plan.usageCustomers}
+                  {plan.maxCustomers != null ? ` / ${plan.maxCustomers}` : ''}
+                </p>
+              )}
+              {plan.usageOrdersThisMonth != null && (
+                <p className="text-sm">
+                  Orders this month: {plan.usageOrdersThisMonth}
+                  {plan.maxOrdersPerMonth != null
+                    ? ` / ${plan.maxOrdersPerMonth}`
+                    : ''}
+                </p>
+              )}
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/billing">Manage billing</Link>
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Loading plan...</p>
+          )}
         </CardContent>
       </Card>
 

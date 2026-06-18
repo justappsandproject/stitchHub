@@ -19,6 +19,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
 import { CreateStyleDto, StyleQueryDto, UpdateStyleDto } from './dto/style.dto';
+import { TryOnDto } from './dto/try-on.dto';
 import { StylesService } from './styles.service';
 
 @ApiTags('Styles')
@@ -83,5 +84,16 @@ export class StylesController {
   remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     const tenantId = resolveTenantId(user);
     return this.stylesService.remove(tenantId, id);
+  }
+
+  @Post(':id/try-on')
+  @Roles(UserRole.CUSTOMER)
+  tryOn(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: TryOnDto,
+  ) {
+    const tenantId = resolveTenantId(user);
+    return this.stylesService.tryOn(tenantId, id, user, dto);
   }
 }

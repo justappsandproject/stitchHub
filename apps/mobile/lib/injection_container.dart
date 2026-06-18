@@ -103,6 +103,9 @@ Future<void> initDependencies({String? apiBaseUrl}) async {
     ..registerLazySingleton<StylesRepository>(
       () => StylesRepositoryImpl(sl()),
     )
+    ..registerLazySingleton<PaymentsRepository>(
+      () => PaymentsRepositoryImpl(sl()),
+    )
     ..registerLazySingleton<PaystackService>(() => PaystackService(sl()))
     ..registerLazySingleton<SyncManager>(
       () => SyncManager(
@@ -115,13 +118,13 @@ Future<void> initDependencies({String? apiBaseUrl}) async {
       () => PushNotificationService(sl(), sl()),
     )
     ..registerFactory(() => AuthBloc(sl()))
-    ..registerFactory(() => OrdersBloc(sl()))
-    ..registerFactory(() => DashboardBloc(
+    ..registerLazySingleton(() => OrdersBloc(sl()))
+    ..registerLazySingleton(() => DashboardBloc(
           dashboardRepository: sl(),
           adminRepository: sl(),
         ))
-    ..registerFactory(() => MessagesBloc(sl()))
-    ..registerFactory(() => BillingBloc(
+    ..registerLazySingleton(() => MessagesBloc(sl()))
+    ..registerLazySingleton(() => BillingBloc(
           subscriptionRepository: sl(),
           paystackService: sl(),
         ))
