@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stitchhub_mobile/core/error/exceptions.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
@@ -161,11 +162,15 @@ class _CustomersPageState extends State<CustomersPage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
               controller: _searchController,
+              style: const TextStyle(color: AppTheme.navy, fontWeight: FontWeight.w500),
               decoration: InputDecoration(
                 hintText: 'Search customers...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: TextStyle(color: AppTheme.navy.withValues(alpha: 0.55)),
+                prefixIcon: const Icon(Icons.search, color: AppTheme.navy),
+                filled: true,
+                fillColor: AppTheme.card,
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: const Icon(Icons.clear, color: AppTheme.navy),
                   onPressed: () {
                     _searchController.clear();
                     _loadCustomers();
@@ -184,7 +189,15 @@ class _CustomersPageState extends State<CustomersPage> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _customers.isEmpty
-                    ? const Center(child: Text('No customers found'))
+                    ? Center(
+                        child: Text(
+                          'No customers found',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: AppTheme.navy,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      )
                     : ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: _customers.length,
@@ -192,29 +205,77 @@ class _CustomersPageState extends State<CustomersPage> {
                         itemBuilder: (context, index) {
                           final customer = _customers[index];
                           return Card(
+                            color: AppTheme.card,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                              side: const BorderSide(color: AppTheme.border),
+                            ),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: CircleAvatar(
+                                backgroundColor: AppTheme.accentLight,
+                                foregroundColor: AppTheme.navy,
                                 backgroundImage: customer.photoUrl != null
                                     ? CachedNetworkImageProvider(customer.photoUrl!)
                                     : null,
                                 child: customer.photoUrl == null
-                                    ? Text(customer.firstName.isNotEmpty ? customer.firstName[0] : '?')
+                                    ? Text(
+                                        customer.firstName.isNotEmpty ? customer.firstName[0] : '?',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.navy,
+                                        ),
+                                      )
                                     : null,
                               ),
                               title: Text(
                                 customer.fullName,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                  fontWeight: FontWeight.w600,
+                                style: const TextStyle(
+                                  color: AppTheme.navy,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
                                 ),
                               ),
-                              subtitle: Text(
-                                '${customer.phone}${customer.email != null ? '\n${customer.email}' : ''}',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      customer.phone,
+                                      style: const TextStyle(
+                                        color: Color(0xFF3D3D52),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
+                                    if (customer.email != null && customer.email!.isNotEmpty)
+                                      Text(
+                                        customer.email!,
+                                        style: TextStyle(
+                                          color: AppTheme.navy.withValues(alpha: 0.72),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                              trailing: customer.isVip ? const Chip(label: Text('VIP')) : null,
+                              trailing: customer.isVip
+                                  ? Chip(
+                                      label: const Text(
+                                        'VIP',
+                                        style: TextStyle(
+                                          color: AppTheme.navy,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      backgroundColor: AppTheme.accentLight,
+                                      side: const BorderSide(color: AppTheme.accent),
+                                      padding: EdgeInsets.zero,
+                                    )
+                                  : null,
                               onTap: () => context.push('${AppRouter.designerCustomerDetail}/${customer.id}'),
                             ),
                           );
