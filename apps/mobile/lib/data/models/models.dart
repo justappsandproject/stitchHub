@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:stitchhub_mobile/core/constants/enums.dart';
+import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/entities/user_entity.dart';
 
@@ -72,14 +73,14 @@ class OrderModel extends OrderEntity {
       orderNumber: json['orderNumber'] as String? ?? '',
       status: OrderStatus.fromString(json['status'] as String? ?? 'NEW'),
       customerName: customerName,
-      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
+      totalAmount: parseDoubleOrZero(json['totalAmount']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       fabric: json['fabric'] as String?,
       deliveryDate: json['deliveryDate'] != null
           ? DateTime.tryParse(json['deliveryDate'] as String)
           : null,
       priority: json['priority'] as String?,
-      balanceAmount: (json['balanceAmount'] as num?)?.toDouble(),
+      balanceAmount: parseDouble(json['balanceAmount']),
     );
   }
 }
@@ -180,7 +181,7 @@ class SubscriptionModel extends SubscriptionEntity {
       isSuspended: json['isSuspended'] as bool? ?? false,
       requiresPayment: json['requiresPayment'] as bool? ?? false,
       configName: config?['name'] as String?,
-      priceNgn: (config?['priceNgn'] as num?)?.toInt(),
+      priceNgn: parseInt(config?['priceNgn']),
       maxCustomers: config?['maxCustomers'] as int?,
       maxOrdersPerMonth: config?['maxOrdersPerMonth'] as int?,
       usageCustomers: usage?['customers'] as int?,
@@ -320,11 +321,11 @@ class DiscountModel extends DiscountEntity {
         code: json['code'] as String? ?? '',
         name: json['name'] as String? ?? '',
         type: json['type'] as String? ?? 'PERCENTAGE',
-        value: (json['value'] as num?)?.toDouble() ?? 0,
+        value: parseDoubleOrZero(json['value']),
         description: json['description'] as String?,
         applicability: json['applicability'] as String?,
-        minOrderAmount: (json['minOrderAmount'] as num?)?.toDouble(),
-        maxDiscountCap: (json['maxDiscountCap'] as num?)?.toDouble(),
+        minOrderAmount: parseDouble(json['minOrderAmount']),
+        maxDiscountCap: parseDouble(json['maxDiscountCap']),
         maxUses: json['maxUses'] as int?,
         usedCount: json['usedCount'] as int? ?? 0,
         isActive: json['isActive'] as bool? ?? true,
@@ -357,7 +358,7 @@ class StyleModel extends StyleEntity {
         videoUrls: (json['videoUrls'] as List<dynamic>? ?? [])
             .map((e) => e.toString())
             .toList(),
-        basePrice: (json['basePrice'] as num?)?.toDouble(),
+        basePrice: parseDouble(json['basePrice']),
         isActive: json['isActive'] as bool? ?? true,
       );
 }

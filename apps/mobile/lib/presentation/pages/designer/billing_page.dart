@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
 import 'package:stitchhub_mobile/core/theme/app_theme.dart';
+import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
@@ -374,7 +375,7 @@ class _BillingBodyState extends State<_BillingBody> {
                 subtitle: Text(
                   '${customer?['firstName'] ?? ''} ${customer?['lastName'] ?? ''} · ${order?['orderNumber'] ?? ''}',
                 ),
-                trailing: Text(formatNgn((inv['amount'] as num?) ?? 0)),
+                trailing: Text(formatNgn(parseNumOrZero(inv['amount']))),
               ),
             );
           }),
@@ -483,7 +484,7 @@ class _BillingBodyState extends State<_BillingBody> {
         ...plans.map((plan) {
           final code = plan['plan'] as String? ?? plan['code'] as String? ?? '';
           final name = plan['name'] as String? ?? code;
-          final price = plan['priceNgn'] as num? ?? 0;
+          final price = parseNumOrZero(plan['priceNgn']);
           final tagline = plan['tagline'] as String? ?? '';
           final features = (plan['features'] as List<dynamic>? ?? [])
               .map((e) => e.toString())

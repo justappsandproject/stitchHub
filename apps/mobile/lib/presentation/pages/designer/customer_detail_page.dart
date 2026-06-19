@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
@@ -201,7 +202,7 @@ class _CustomerDetailBody extends StatelessWidget {
                             (order['status'] as String? ?? '').replaceAll('_', ' '),
                             style: const TextStyle(fontSize: 12),
                           ),
-                          Text(formatNgn((order['totalAmount'] as num?) ?? 0)),
+                          Text(formatNgn(parseNumOrZero(order['totalAmount']))),
                         ],
                       ),
                     );

@@ -5,6 +5,7 @@ import 'package:stitchhub_mobile/core/network/network_info.dart';
 import 'package:stitchhub_mobile/core/storage/local_database.dart';
 import 'package:stitchhub_mobile/core/storage/secure_storage.dart';
 import 'package:stitchhub_mobile/core/sync/sync_queue.dart';
+import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/data/models/models.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/entities/user_entity.dart';
@@ -359,13 +360,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
       return DashboardSummary(
         title: 'Platform Overview',
         stats: [
-          DashboardStat(label: 'Fashion Houses', value: summary['totalTenants'] ?? 0),
-          DashboardStat(label: 'Active Houses', value: summary['activeTenants'] ?? 0),
-          DashboardStat(label: 'Platform Users', value: summary['totalUsers'] ?? 0),
-          DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
+          DashboardStat(label: 'Fashion Houses', value: parseIntOrZero(summary['totalTenants'])),
+          DashboardStat(label: 'Active Houses', value: parseIntOrZero(summary['activeTenants'])),
+          DashboardStat(label: 'Platform Users', value: parseIntOrZero(summary['totalUsers'])),
+          DashboardStat(label: 'Total Orders', value: parseIntOrZero(summary['totalOrders'])),
           DashboardStat(
             label: 'MRR',
-            value: summary['monthlyRecurringRevenue'] ?? 0,
+            value: parseNumOrZero(summary['monthlyRecurringRevenue']),
             isCurrency: true,
           ),
         ],
@@ -379,20 +380,20 @@ class DashboardRepositoryImpl implements DashboardRepository {
       return DashboardSummary(
         title: 'Dashboard',
         stats: [
-          DashboardStat(label: 'Customers', value: summary['totalCustomers'] ?? 0),
-          DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
-          DashboardStat(label: 'Active Orders', value: summary['activeOrders'] ?? 0),
+          DashboardStat(label: 'Customers', value: parseIntOrZero(summary['totalCustomers'])),
+          DashboardStat(label: 'Total Orders', value: parseIntOrZero(summary['totalOrders'])),
+          DashboardStat(label: 'Active Orders', value: parseIntOrZero(summary['activeOrders'])),
           DashboardStat(
             label: 'Revenue',
-            value: summary['totalRevenue'] ?? 0,
+            value: parseNumOrZero(summary['totalRevenue']),
             isCurrency: true,
           ),
           DashboardStat(
             label: 'Outstanding',
-            value: summary['outstandingBalance'] ?? 0,
+            value: parseNumOrZero(summary['outstandingBalance']),
             isCurrency: true,
           ),
-          DashboardStat(label: 'Delivered', value: summary['deliveredOrders'] ?? 0),
+          DashboardStat(label: 'Delivered', value: parseIntOrZero(summary['deliveredOrders'])),
         ],
         recentOrders: recentOrders,
         ordersByStatus: ordersByStatus,
@@ -402,12 +403,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
     return DashboardSummary(
       title: 'My Orders',
       stats: [
-        DashboardStat(label: 'Total Orders', value: summary['totalOrders'] ?? 0),
-        DashboardStat(label: 'Active Orders', value: summary['activeOrders'] ?? 0),
-        DashboardStat(label: 'Delivered', value: summary['deliveredOrders'] ?? 0),
+        DashboardStat(label: 'Total Orders', value: parseIntOrZero(summary['totalOrders'])),
+        DashboardStat(label: 'Active Orders', value: parseIntOrZero(summary['activeOrders'])),
+        DashboardStat(label: 'Delivered', value: parseIntOrZero(summary['deliveredOrders'])),
         DashboardStat(
           label: 'Balance Due',
-          value: summary['outstandingBalance'] ?? 0,
+          value: parseNumOrZero(summary['outstandingBalance']),
           isCurrency: true,
         ),
       ],
@@ -499,9 +500,9 @@ class DiscountsRepositoryImpl implements DiscountsRepository {
     });
     return DiscountValidationResult(
       valid: json['valid'] as bool? ?? false,
-      discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0,
-      subtotalAmount: (json['subtotalAmount'] as num?)?.toDouble() ?? orderAmount,
-      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? orderAmount,
+      discountAmount: parseDoubleOrZero(json['discountAmount']),
+      subtotalAmount: parseDouble(json['subtotalAmount']) ?? orderAmount,
+      totalAmount: parseDouble(json['totalAmount']) ?? orderAmount,
       code: json['code'] as String?,
       name: json['name'] as String?,
       message: json['message'] as String?,
