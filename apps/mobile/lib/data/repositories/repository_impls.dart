@@ -238,6 +238,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
     await _apiClient.patch('/orders/$orderId/status', data: {'status': status});
   }
 
+  @override
+  Future<void> deleteOrder(String id) async {
+    await _apiClient.delete('/orders/$id');
+  }
+
   Map<String, dynamic> _orderToMap(OrderModel order) => {
         'id': order.id,
         'orderNumber': order.orderNumber,
@@ -315,6 +320,64 @@ class CustomersRepositoryImpl implements CustomersRepository {
   Future<Map<String, dynamic>> getCustomerDetail(String id) async {
     return _apiClient.get('/customers/$id');
   }
+
+  @override
+  Future<void> deleteCustomer(String id) async {
+    await _apiClient.delete('/customers/$id');
+  }
+}
+
+class InventoryRepositoryImpl implements InventoryRepository {
+  InventoryRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<Map<String, dynamic>> getDashboard() async {
+    return _apiClient.get('/inventory/dashboard');
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> listProducts({
+    String? query,
+    String? category,
+    String? stockStatus,
+  }) async {
+    final list = await _apiClient.getList(
+      '/inventory',
+      queryParameters: {
+        if (query != null && query.isNotEmpty) 'q': query,
+        if (category != null && category.isNotEmpty) 'category': category,
+        if (stockStatus != null && stockStatus.isNotEmpty) 'stockStatus': stockStatus,
+      },
+    );
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProduct(String id) async {
+    return _apiClient.get('/inventory/$id');
+  }
+
+  @override
+  Future<Map<String, dynamic>> createProduct(Map<String, dynamic> data) async {
+    return _apiClient.post('/inventory', data: data);
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateProduct(String id, Map<String, dynamic> data) async {
+    return _apiClient.patch('/inventory/$id', data: data);
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    await _apiClient.delete('/inventory/$id');
+  }
+
+  @override
+  Future<Map<String, dynamic>> restockProduct(String id, Map<String, dynamic> data) async {
+    return _apiClient.post('/inventory/$id/restock', data: data);
+  }
 }
 
 class DashboardRepositoryImpl implements DashboardRepository {
@@ -377,24 +440,47 @@ class DashboardRepositoryImpl implements DashboardRepository {
     }
 
     if (summary.containsKey('totalCustomers')) {
+      final stats = <DashboardStat>[
+        DashboardStat(label: 'Customers', value: parseIntOrZero(summary['totalCustomers'])),
+        DashboardStat(label: 'Total Orders', value: parseIntOrZero(summary['totalOrders'])),
+        DashboardStat(label: 'Active Orders', value: parseIntOrZero(summary['activeOrders'])),
+      ];
+      if (summary.containsKey('todayRevenue')) {
+        stats.add(DashboardStat(
+          label: 'Today Revenue',
+          value: parseNumOrZero(summary['todayRevenue']),
+          isCurrency: true,
+        ));
+      }
+      if (summary.containsKey('monthlyRevenue')) {
+        stats.add(DashboardStat(
+          label: 'This Month',
+          value: parseNumOrZero(summary['monthlyRevenue']),
+          isCurrency: true,
+        ));
+      }
+      if (summary.containsKey('pendingInvoices')) {
+        stats.add(DashboardStat(
+          label: 'Pending Invoices',
+          value: parseIntOrZero(summary['pendingInvoices']),
+        ));
+      }
+      stats.addAll([
+        DashboardStat(
+          label: 'Revenue',
+          value: parseNumOrZero(summary['totalRevenue']),
+          isCurrency: true,
+        ),
+        DashboardStat(
+          label: 'Outstanding',
+          value: parseNumOrZero(summary['outstandingBalance']),
+          isCurrency: true,
+        ),
+        DashboardStat(label: 'Delivered', value: parseIntOrZero(summary['deliveredOrders'])),
+      ]);
       return DashboardSummary(
         title: 'Dashboard',
-        stats: [
-          DashboardStat(label: 'Customers', value: parseIntOrZero(summary['totalCustomers'])),
-          DashboardStat(label: 'Total Orders', value: parseIntOrZero(summary['totalOrders'])),
-          DashboardStat(label: 'Active Orders', value: parseIntOrZero(summary['activeOrders'])),
-          DashboardStat(
-            label: 'Revenue',
-            value: parseNumOrZero(summary['totalRevenue']),
-            isCurrency: true,
-          ),
-          DashboardStat(
-            label: 'Outstanding',
-            value: parseNumOrZero(summary['outstandingBalance']),
-            isCurrency: true,
-          ),
-          DashboardStat(label: 'Delivered', value: parseIntOrZero(summary['deliveredOrders'])),
-        ],
+        stats: stats,
         recentOrders: recentOrders,
         ordersByStatus: ordersByStatus,
       );

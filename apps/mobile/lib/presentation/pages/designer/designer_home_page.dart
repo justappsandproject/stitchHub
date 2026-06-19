@@ -147,6 +147,11 @@ class _DashboardBody extends StatelessWidget {
                 onTap: () => context.go(AppRouter.designerStyles),
               ),
               _QuickAction(
+                icon: Icons.inventory_2_outlined,
+                label: 'Inventory',
+                onTap: () => context.push(AppRouter.designerInventory),
+              ),
+              _QuickAction(
                 icon: Icons.payments_outlined,
                 label: 'Billing',
                 onTap: () => context.go(AppRouter.designerBilling),

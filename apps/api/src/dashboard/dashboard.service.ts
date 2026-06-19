@@ -9,6 +9,14 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   async getTenantDashboard(tenantId: string) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(startOfToday);
+    startOfMonth.setDate(1);
+
+    const orderScope = { tenantId, deletedAt: null };
+    const customerScope = { tenantId, deletedAt: null };
+
     const [
       totalCustomers,
       totalOrders,
@@ -16,22 +24,26 @@ export class DashboardService {
       deliveredOrders,
       revenueAgg,
       outstandingAgg,
+      todayRevenueAgg,
+      monthlyRevenueAgg,
+      pendingInvoices,
       ordersByStatus,
       recentOrders,
       portfolioCount,
       activeDiscounts,
       recentPortfolio,
+      paidPayments,
     ] = await Promise.all([
-      this.prisma.customer.count({ where: { tenantId } }),
-      this.prisma.order.count({ where: { tenantId } }),
+      this.prisma.customer.count({ where: customerScope }),
+      this.prisma.order.count({ where: orderScope }),
       this.prisma.order.count({
         where: {
-          tenantId,
+          ...orderScope,
           status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED] },
         },
       }),
       this.prisma.order.count({
-        where: { tenantId, status: OrderStatus.DELIVERED },
+        where: { ...orderScope, status: OrderStatus.DELIVERED },
       }),
       this.prisma.payment.aggregate({
         where: { tenantId, status: 'PAID' },
@@ -39,19 +51,41 @@ export class DashboardService {
       }),
       this.prisma.order.aggregate({
         where: {
-          tenantId,
+          ...orderScope,
           balanceAmount: { gt: 0 },
           status: { not: OrderStatus.CANCELLED },
         },
         _sum: { balanceAmount: true },
       }),
+      this.prisma.payment.aggregate({
+        where: {
+          tenantId,
+          status: 'PAID',
+          paidAt: { gte: startOfToday },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.aggregate({
+        where: {
+          tenantId,
+          status: 'PAID',
+          paidAt: { gte: startOfMonth },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.invoice.count({
+        where: {
+          tenantId,
+          status: { in: ['SENT', 'PARTIALLY_PAID', 'OVERDUE'] },
+        },
+      }),
       this.prisma.order.groupBy({
         by: ['status'],
-        where: { tenantId },
+        where: orderScope,
         _count: { status: true },
       }),
       this.prisma.order.findMany({
-        where: { tenantId },
+        where: orderScope,
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: {
@@ -78,7 +112,39 @@ export class DashboardService {
           source: true,
         },
       }),
+      this.prisma.payment.findMany({
+        where: { tenantId, status: 'PAID' },
+        select: { amount: true, paidAt: true },
+        orderBy: { paidAt: 'desc' },
+        take: 500,
+      }),
     ]);
+
+    const revenueTrend = this.buildRevenueTrend(paidPayments);
+
+    let inventorySummary = null;
+    try {
+      const products = await this.prisma.inventoryProduct.findMany({
+        where: { tenantId, isActive: true },
+        select: { quantity: true, lowStockThreshold: true, unitCost: true },
+      });
+      inventorySummary = {
+        totalProducts: products.length,
+        availableStock: products.reduce((s, p) => s + p.quantity, 0),
+        lowStock: products.filter(
+          (p) => p.quantity > 0 && p.quantity <= p.lowStockThreshold,
+        ).length,
+        outOfStock: products.filter((p) => p.quantity <= 0).length,
+        totalInventoryValue: products.reduce(
+          (s, p) => s + p.quantity * Number(p.unitCost),
+          0,
+        ),
+      };
+    } catch {
+      inventorySummary = null;
+    }
+
+    const totalRevenue = Number(revenueAgg._sum.amount ?? 0);
 
     return {
       summary: {
@@ -86,11 +152,18 @@ export class DashboardService {
         totalOrders,
         activeOrders,
         deliveredOrders,
-        totalRevenue: Number(revenueAgg._sum.amount ?? 0),
+        totalRevenue,
+        revenueReceived: totalRevenue,
         outstandingBalance: Number(outstandingAgg._sum.balanceAmount ?? 0),
+        outstandingPayments: Number(outstandingAgg._sum.balanceAmount ?? 0),
+        pendingInvoices,
+        todayRevenue: Number(todayRevenueAgg._sum.amount ?? 0),
+        monthlyRevenue: Number(monthlyRevenueAgg._sum.amount ?? 0),
         portfolioCount,
         activeDiscounts,
       },
+      revenueTrend,
+      inventorySummary,
       ordersByStatus: ordersByStatus.map((s) => ({
         status: s.status,
         count: s._count.status,
@@ -98,6 +171,32 @@ export class DashboardService {
       recentOrders,
       recentPortfolio,
     };
+  }
+
+  private buildRevenueTrend(
+    payments: { amount: unknown; paidAt: Date | null }[],
+  ) {
+    const buckets = new Map<string, number>();
+    const now = new Date();
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      buckets.set(key, 0);
+    }
+
+    for (const payment of payments) {
+      if (!payment.paidAt) continue;
+      const d = payment.paidAt;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (buckets.has(key)) {
+        buckets.set(key, (buckets.get(key) ?? 0) + Number(payment.amount));
+      }
+    }
+
+    return Array.from(buckets.entries()).map(([month, amount]) => ({
+      month,
+      amount,
+    }));
   }
 
   async getSuperAdminDashboard() {

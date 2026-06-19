@@ -54,10 +54,10 @@ export class PaymentsController {
   }
 
   @Get()
-  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
+  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER, UserRole.CUSTOMER)
   findPayments(@CurrentUser() user: JwtPayload) {
     const tenantId = resolveTenantId(user);
-    return this.paymentsService.findPayments(tenantId);
+    return this.paymentsService.findPayments(tenantId, user);
   }
 
   @Get('receipts')

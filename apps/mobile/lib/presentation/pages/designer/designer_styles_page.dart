@@ -41,12 +41,20 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
   }
 
   Future<void> _showAddSheet() async {
-    final nameController = TextEditingController();
-    final categoryController = TextEditingController(text: 'Agbada');
-    final descController = TextEditingController();
-    final priceController = TextEditingController();
-    final photoUrls = <String>[];
-    final videoUrls = <String>[];
+    await _showStyleSheet();
+  }
+
+  Future<void> _showStyleSheet({StyleEntity? style}) async {
+    final isEdit = style != null;
+    final nameController = TextEditingController(text: style?.name ?? '');
+    final categoryController = TextEditingController(text: style?.category ?? 'Agbada');
+    final descController = TextEditingController(text: style?.description ?? '');
+    final priceController = TextEditingController(
+      text: style?.basePrice != null ? '${style!.basePrice}' : '',
+    );
+    final photoUrls = List<String>.from(style?.photoUrls ?? []);
+    final videoUrls = List<String>.from(style?.videoUrls ?? []);
+    var saving = false;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -66,7 +74,10 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Add style', style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      isEdit ? 'Edit style' : 'Add style',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 12),
                     TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
                     TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category')),
@@ -83,6 +94,36 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                       icon: const Icon(Icons.photo_outlined),
                       label: Text('Add photo (${photoUrls.length})'),
                     ),
+                    if (photoUrls.isNotEmpty)
+                      SizedBox(
+                        height: 72,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: photoUrls.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (_, i) => Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CachedNetworkImage(
+                                  imageUrl: photoUrls[i],
+                                  width: 72,
+                                  height: 72,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: IconButton(
+                                  icon: const Icon(Icons.close, size: 16),
+                                  onPressed: () => setSheetState(() => photoUrls.removeAt(i)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     OutlinedButton.icon(
                       onPressed: () async {
                         final file = await ImagePicker().pickVideo(source: ImageSource.gallery);
@@ -95,20 +136,34 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                     ),
                     const SizedBox(height: 12),
                     FilledButton(
-                      onPressed: () async {
-                        await _repo.createStyle({
-                          'name': nameController.text.trim(),
-                          'category': categoryController.text.trim(),
-                          if (descController.text.trim().isNotEmpty) 'description': descController.text.trim(),
-                          if (priceController.text.trim().isNotEmpty) 'basePrice': double.tryParse(priceController.text.trim()),
-                          'photoUrls': photoUrls,
-                          'videoUrls': videoUrls,
-                          'isActive': true,
-                        });
-                        if (context.mounted) Navigator.pop(context);
-                        await _load();
-                      },
-                      child: const Text('Save style'),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setSheetState(() => saving = true);
+                              try {
+                                final payload = {
+                                  'name': nameController.text.trim(),
+                                  'category': categoryController.text.trim(),
+                                  if (descController.text.trim().isNotEmpty)
+                                    'description': descController.text.trim(),
+                                  if (priceController.text.trim().isNotEmpty)
+                                    'basePrice': double.tryParse(priceController.text.trim()),
+                                  'photoUrls': photoUrls,
+                                  'videoUrls': videoUrls,
+                                  'isActive': style?.isActive ?? true,
+                                };
+                                if (isEdit) {
+                                  await _repo.updateStyle(style.id, payload);
+                                } else {
+                                  await _repo.createStyle(payload);
+                                }
+                                if (context.mounted) Navigator.pop(context);
+                                await _load();
+                              } finally {
+                                if (context.mounted) setSheetState(() => saving = false);
+                              }
+                            },
+                      child: Text(saving ? 'Saving...' : (isEdit ? 'Save changes' : 'Save style')),
                     ),
                   ],
                 ),
@@ -118,6 +173,33 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
         );
       },
     );
+  }
+
+  Future<void> _confirmDelete(StyleEntity style) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete style?'),
+        content: Text('This will permanently remove "${style.name}".'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await _repo.deleteStyle(style.id);
+    await _load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Style deleted')),
+      );
+    }
   }
 
   void _navigate(int index) {
@@ -132,6 +214,8 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
         context.go(AppRouter.designerMessages);
       case 4:
         context.go(AppRouter.designerBilling);
+      case 5:
+        context.go(AppRouter.settings);
     }
   }
 
@@ -139,7 +223,7 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
   Widget build(BuildContext context) {
     return DesignerShell(
       title: 'Style Store',
-      selectedIndex: 2,
+      selectedIndex: 0,
       onNavigate: _navigate,
       unreadMessages: 0,
       actions: [
@@ -195,11 +279,19 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                                 Row(
                                   children: [
                                     TextButton(
+                                      onPressed: () => _showStyleSheet(style: style),
+                                      child: const Text('Edit'),
+                                    ),
+                                    TextButton(
                                       onPressed: () async {
                                         await _repo.updateStyle(style.id, {'isActive': !style.isActive});
                                         await _load();
                                       },
                                       child: Text(style.isActive ? 'Hide' : 'Show'),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error, size: 20),
+                                      onPressed: () => _confirmDelete(style),
                                     ),
                                   ],
                                 ),

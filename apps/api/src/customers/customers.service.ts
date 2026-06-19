@@ -40,7 +40,7 @@ export class CustomersService {
   }
 
   async findAll(tenantId: string, query: SearchCustomersDto) {
-    const where: Prisma.CustomerWhereInput = { tenantId };
+    const where: Prisma.CustomerWhereInput = { tenantId, deletedAt: null };
 
     if (query.q) {
       where.OR = [
@@ -71,7 +71,7 @@ export class CustomersService {
   async findOne(tenantId: string, id: string) {
     const [customer, subscription] = await Promise.all([
       this.prisma.customer.findFirst({
-        where: { id, tenantId },
+        where: { id, tenantId, deletedAt: null },
         include: {
           user: {
             select: {
@@ -133,6 +133,25 @@ export class CustomersService {
 
   async remove(tenantId: string, id: string) {
     await this.findOne(tenantId, id);
-    return this.prisma.customer.delete({ where: { id } });
+
+    const activeOrders = await this.prisma.order.count({
+      where: {
+        tenantId,
+        customerId: id,
+        deletedAt: null,
+        status: { notIn: ['DELIVERED', 'CANCELLED'] },
+      },
+    });
+
+    if (activeOrders > 0) {
+      throw new ConflictException(
+        'Cannot delete customer with active orders. Cancel or complete orders first.',
+      );
+    }
+
+    return this.prisma.customer.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
   }
 }

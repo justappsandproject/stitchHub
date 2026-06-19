@@ -14,6 +14,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { MessagesModule } from './messages/messages.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
@@ -34,6 +35,7 @@ import { UploadsModule } from './uploads/uploads.module';
     PortfolioModule,
     DiscountsModule,
     StylesModule,
+    InventoryModule,
   ],
 })
 export class AppModule {}

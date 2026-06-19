@@ -8,15 +8,25 @@ import {
   Ruler,
   ShoppingBag,
   Star,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -36,10 +46,13 @@ const statusColors: Record<string, string> = {
 
 export default function CustomerDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +71,20 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await customersApi.delete(id);
+      router.push('/dashboard/customers');
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr.message ?? 'Failed to delete customer');
+      setDeleteOpen(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (loading) {
     return <p className="text-muted-foreground">Loading customer...</p>;
@@ -102,7 +129,7 @@ export default function CustomerDetailPage() {
               </div>
             )}
             <div>
-              <h1 className="font-display text-3xl font-semibold tracking-tight">
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
                 {customer.firstName} {customer.lastName}
                 {customer.isVip && (
                   <Star className="ml-2 inline h-6 w-6 fill-yellow-400 text-yellow-400" />
@@ -115,12 +142,18 @@ export default function CustomerDetailPage() {
             </div>
           </div>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/dashboard/measurements?customerId=${customer.id}`}>
-            <Ruler className="mr-2 h-4 w-4" />
-            Add measurement
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/measurements?customerId=${customer.id}`}>
+              <Ruler className="mr-2 h-4 w-4" />
+              Add measurement
+            </Link>
+          </Button>
+          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete customer
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -153,7 +186,7 @@ export default function CustomerDetailPage() {
             )}
             {customer.user && (
               <div className="rounded-lg border bg-secondary/30 p-3">
-                <p className="font-medium">Portal account</p>
+                <p className="font-medium text-foreground">Portal account</p>
                 <p className="text-muted-foreground">{customer.user.email}</p>
                 {customer.user.lastLoginAt && (
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -177,7 +210,7 @@ export default function CustomerDetailPage() {
             )}
             {customer.notes && (
               <div>
-                <p className="mb-1 font-medium">Notes</p>
+                <p className="mb-1 font-medium text-foreground">Notes</p>
                 <p className="text-muted-foreground">{customer.notes}</p>
               </div>
             )}
@@ -200,7 +233,7 @@ export default function CustomerDetailPage() {
               {customer.measurements.map((m) => (
                 <div key={m.id} className="rounded-lg border p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">
+                    <p className="font-medium text-foreground">
                       {m.template?.name ?? 'Measurement'}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -214,7 +247,6 @@ export default function CustomerDetailPage() {
                         className="rounded-md bg-secondary px-2 py-1 text-xs"
                       >
                         {key}: {val}
-                        {m.template ? '' : ''}
                       </span>
                     ))}
                   </div>
@@ -248,7 +280,9 @@ export default function CustomerDetailPage() {
                   className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
                 >
                   <div>
-                    <p className="font-medium">{order.orderNumber}</p>
+                    <p className="font-medium text-foreground">
+                      {order.orderNumber}
+                    </p>
                     {order.style && (
                       <p className="text-sm text-muted-foreground">
                         {order.style.name} · {order.style.category}
@@ -264,7 +298,7 @@ export default function CustomerDetailPage() {
                     >
                       {order.status.replace(/_/g, ' ')}
                     </span>
-                    <p className="mt-1 text-sm font-medium">
+                    <p className="mt-1 text-sm font-medium text-foreground">
                       ₦{Number(order.totalAmount).toLocaleString()}
                     </p>
                   </div>
@@ -274,6 +308,34 @@ export default function CustomerDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete customer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete{' '}
+              <strong>
+                {customer.firstName} {customer.lastName}
+              </strong>
+              . Customers with active orders cannot be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting...' : 'Delete customer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import 'package:stitchhub_mobile/presentation/pages/customer/customer_style_deta
 import 'package:stitchhub_mobile/presentation/pages/designer/create_order_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/customer_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_styles_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/designer_inventory_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/plan_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
@@ -54,6 +55,7 @@ class AppRouter {
   static const customerOrders = '/customer/orders';
   static const customerMeasurements = '/customer/measurements';
   static const designerStyles = '/designer/styles';
+  static const designerInventory = '/designer/inventory';
   static const designerCustomerDetail = '/designer/customers';
   static const customerStyles = '/customer/styles';
   static const customerPortfolio = '/customer/portfolio';
@@ -134,6 +136,7 @@ class AppRouter {
         GoRoute(path: designerPortfolio, builder: (_, __) => const DesignerPortfolioPage()),
         GoRoute(path: designerDiscounts, builder: (_, __) => const DesignerDiscountsPage()),
         GoRoute(path: designerStyles, builder: (_, __) => const DesignerStylesPage()),
+        GoRoute(path: designerInventory, builder: (_, __) => const DesignerInventoryPage()),
         GoRoute(
           path: '$designerCustomerDetail/:id',
           builder: (context, state) => CustomerDetailPage(

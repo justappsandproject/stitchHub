@@ -1,9 +1,11 @@
 'use client';
 
 import {
+  CreditCard,
   LayoutDashboard,
   LogOut,
   Palette,
+  Receipt,
   Ruler,
   Settings,
   ShoppingBag,
@@ -17,6 +19,7 @@ const navItems = [
   { href: '/customer', label: 'Home', icon: LayoutDashboard },
   { href: '/customer/styles', label: 'Lookbook', icon: Palette },
   { href: '/customer/orders', label: 'My Orders', icon: ShoppingBag },
+  { href: '/customer/invoices', label: 'Invoices', icon: Receipt },
   { href: '/customer/measurements', label: 'Measurements', icon: Ruler },
   { href: '/customer/settings', label: 'Settings', icon: Settings },
 ];

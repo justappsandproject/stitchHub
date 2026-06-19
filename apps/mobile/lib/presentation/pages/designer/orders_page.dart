@@ -3,8 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/constants/enums.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
+import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
+import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
+import 'package:stitchhub_mobile/presentation/blocs/dashboard/dashboard_bloc.dart';
 import 'package:stitchhub_mobile/presentation/blocs/orders/orders_bloc.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
 
@@ -90,6 +94,42 @@ class _OrdersPageState extends State<OrdersPage> {
   Future<void> _openCreateOrder() async {
     final created = await context.push<bool>(AppRouter.designerCreateOrder);
     if (created == true) _load();
+  }
+
+  Future<void> _confirmDeleteOrder(String orderId, String orderNumber) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete order?'),
+        content: Text('This will permanently remove $orderNumber.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await sl<OrdersRepository>().deleteOrder(orderId);
+      _load();
+      sl<DashboardBloc>().add(const DashboardLoadRequested());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Order deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
   }
 
   @override
@@ -183,7 +223,23 @@ class _OrdersPageState extends State<OrdersPage> {
                                         order.orderNumber,
                                         style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
-                                      orderStatusChip(order.status),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          orderStatusChip(order.status),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete_outline,
+                                              color: Theme.of(context).colorScheme.error,
+                                              size: 20,
+                                            ),
+                                            onPressed: () => _confirmDeleteOrder(
+                                              order.id,
+                                              order.orderNumber,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 6),
@@ -279,10 +335,26 @@ class CustomerOrdersPage extends StatefulWidget {
 }
 
 class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
+  List<Map<String, dynamic>> _invoices = [];
+  bool _loadingInvoices = true;
+
   @override
   void initState() {
     super.initState();
     sl<OrdersBloc>().add(const OrdersLoadRequested());
+    _loadInvoices();
+  }
+
+  Future<void> _loadInvoices() async {
+    setState(() => _loadingInvoices = true);
+    try {
+      final invoices = await sl<PaymentsRepository>().getInvoices();
+      if (mounted) setState(() => _invoices = invoices);
+    } catch (_) {
+      // Invoices are optional if API unavailable.
+    } finally {
+      if (mounted) setState(() => _loadingInvoices = false);
+    }
   }
 
   void _navigate(int index) {
@@ -306,53 +378,121 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
       title: 'My Orders',
       selectedIndex: 2,
       onNavigate: _navigate,
-      body: BlocBuilder<OrdersBloc, OrdersState>(
-        bloc: sl<OrdersBloc>(),
-        builder: (context, state) {
-          if (state is OrdersLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is OrdersLoaded) {
-            return ListView.builder(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          sl<OrdersBloc>().add(const OrdersLoadRequested());
+          await _loadInvoices();
+        },
+        child: BlocBuilder<OrdersBloc, OrdersState>(
+          bloc: sl<OrdersBloc>(),
+          builder: (context, state) {
+            if (state is OrdersLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final orders = state is OrdersLoaded ? state.orders : const <OrderEntity>[];
+
+            return ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: state.orders.length,
-              itemBuilder: (context, index) {
-                final order = state.orders[index];
-                final progress = orderStatusProgress[order.status] ?? 0;
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'My Orders',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                if (state is OrdersLoaded && orders.isEmpty)
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('No orders found'),
+                    ),
+                  )
+                else if (state is OrdersLoaded)
+                  ...orders.map((order) {
+                    final progress = orderStatusProgress[order.status] ?? 0;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              order.orderNumber,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  order.orderNumber,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                orderStatusChip(order.status),
+                              ],
                             ),
-                            orderStatusChip(order.status),
+                            const SizedBox(height: 12),
+                            LinearProgressIndicator(value: progress / 100),
+                            const SizedBox(height: 8),
+                            Text('$progress% complete'),
+                            if (order.deliveryDate != null)
+                              Text(
+                                'Delivery: ${order.deliveryDate!.toLocal().toString().split(' ').first}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        LinearProgressIndicator(value: progress / 100),
-                        const SizedBox(height: 8),
-                        Text('$progress% complete'),
-                        if (order.deliveryDate != null)
-                          Text(
-                            'Delivery: ${order.deliveryDate!.toLocal().toString().split(' ').first}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                      ],
+                      ),
+                    );
+                  }),
+                const SizedBox(height: 24),
+                Text(
+                  'Invoices & receipts',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                if (_loadingInvoices)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_invoices.isEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'No invoices yet. Your designer will send billing here.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  )
+                else
+                  ..._invoices.map((inv) {
+                    final order = inv['order'] as Map<String, dynamic>?;
+                    final status = inv['status'] as String? ?? '';
+                    final paid = inv['paidAmount'];
+                    final amount = parseNumOrZero(inv['amount']);
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          status == 'PAID' ? Icons.receipt_long : Icons.receipt_outlined,
+                          color: status == 'PAID' ? Colors.green : null,
+                        ),
+                        title: Text(inv['invoiceNumber'] as String? ?? 'Invoice'),
+                        subtitle: Text(
+                          '${order?['orderNumber'] ?? 'Order'} · ${status.replaceAll('_', ' ')}'
+                          '${paid != null ? '\nPaid ${formatNgn(parseNumOrZero(paid))}' : ''}',
+                        ),
+                        isThreeLine: paid != null,
+                        trailing: Text(formatNgn(amount)),
+                      ),
+                    );
+                  }),
+              ],
             );
-          }
-          return const Center(child: Text('No orders found'));
-        },
+          },
+        ),
       ),
     );
   }

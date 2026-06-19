@@ -106,6 +106,9 @@ Future<void> initDependencies({String? apiBaseUrl}) async {
     ..registerLazySingleton<PaymentsRepository>(
       () => PaymentsRepositoryImpl(sl()),
     )
+    ..registerLazySingleton<InventoryRepository>(
+      () => InventoryRepositoryImpl(sl()),
+    )
     ..registerLazySingleton<PaystackService>(() => PaystackService(sl()))
     ..registerLazySingleton<SyncManager>(
       () => SyncManager(

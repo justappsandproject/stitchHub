@@ -42,6 +42,44 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     }
   }
 
+  Future<void> _confirmDelete() async {
+    final firstName = _data?['firstName'] as String? ?? '';
+    final lastName = _data?['lastName'] as String? ?? '';
+    final name = '$firstName $lastName'.trim();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete customer?'),
+        content: Text('This will permanently remove $name and their records.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await sl<CustomersRepository>().deleteCustomer(widget.customerId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Customer deleted')),
+      );
+      context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,6 +89,13 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
+        actions: [
+          if (_data != null)
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+              onPressed: _confirmDelete,
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

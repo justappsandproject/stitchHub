@@ -1,7 +1,17 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -21,25 +31,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { api } from '@/lib/api';
+import { api, ordersApi, type OrderRecord } from '@/lib/api';
 
 interface Customer {
   id: string;
   firstName: string;
   lastName: string;
   phone: string;
-}
-
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  priority: string;
-  totalAmount: number;
-  balanceAmount: number;
-  progress: number;
-  deliveryDate?: string;
-  customer: { firstName: string; lastName: string; phone: string };
 }
 
 const ORDER_STATUSES = [
@@ -77,7 +75,7 @@ const emptyForm = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,10 +83,12 @@ export default function OrdersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OrderRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadOrders = useCallback(async () => {
     try {
-      const data = await api<Order[]>('/orders');
+      const data = await ordersApi.list();
       setOrders(data);
     } catch (err) {
       console.error(err);
@@ -112,19 +112,16 @@ export default function OrdersPage() {
     setSaving(true);
 
     try {
-      await api('/orders', {
-        method: 'POST',
-        body: JSON.stringify({
-          customerId: form.customerId,
-          fabric: form.fabric || undefined,
-          deliveryDate: form.deliveryDate || undefined,
-          priority: form.priority,
-          notes: form.notes || undefined,
-          totalAmount: parseFloat(form.totalAmount) || 0,
-          depositAmount: form.depositAmount
-            ? parseFloat(form.depositAmount)
-            : undefined,
-        }),
+      await ordersApi.create({
+        customerId: form.customerId,
+        fabric: form.fabric || undefined,
+        deliveryDate: form.deliveryDate || undefined,
+        priority: form.priority,
+        notes: form.notes || undefined,
+        totalAmount: parseFloat(form.totalAmount) || 0,
+        depositAmount: form.depositAmount
+          ? parseFloat(form.depositAmount)
+          : undefined,
       });
       setDialogOpen(false);
       setForm(emptyForm);
@@ -156,9 +153,24 @@ export default function OrdersPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await ordersApi.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadOrders();
+    } catch (err: unknown) {
+      const apiErr = err as { message?: string };
+      setError(apiErr.message ?? 'Failed to delete order');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">
             Orders
@@ -172,6 +184,12 @@ export default function OrdersPage() {
           New Order
         </Button>
       </div>
+
+      {error && !dialogOpen && (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-muted-foreground">Loading orders...</p>
@@ -189,9 +207,9 @@ export default function OrdersPage() {
           {orders.map((order) => (
             <Card key={order.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <CardTitle className="text-lg">{order.orderNumber}</CardTitle>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[order.status] ?? 'bg-gray-100'}`}
                     >
@@ -211,13 +229,20 @@ export default function OrdersPage() {
                         </option>
                       ))}
                     </Select>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteTarget(order)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <p className="font-medium">
+                    <p className="font-medium text-foreground">
                       {order.customer.firstName} {order.customer.lastName}
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -254,6 +279,35 @@ export default function OrdersPage() {
           ))}
         </div>
       )}
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete order{' '}
+              <strong>{deleteTarget?.orderNumber}</strong>. This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting...' : 'Delete order'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

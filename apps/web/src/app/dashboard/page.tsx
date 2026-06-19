@@ -2,6 +2,7 @@
 
 import {
   CreditCard,
+  FileText,
   Package,
   ShoppingBag,
   TrendingUp,
@@ -17,15 +18,25 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { dashboardApi, type DashboardData } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 const statConfig = [
   { key: 'totalCustomers', label: 'Customers', icon: Users, href: '/dashboard/customers' },
   { key: 'totalOrders', label: 'Total Orders', icon: ShoppingBag, href: '/dashboard/orders' },
   { key: 'activeOrders', label: 'Active Orders', icon: Package, href: '/dashboard/orders' },
-  { key: 'totalRevenue', label: 'Revenue', icon: TrendingUp, format: 'currency' as const, href: '/dashboard/payments' },
+  { key: 'todayRevenue', label: "Today's Revenue", icon: TrendingUp, format: 'currency' as const, href: '/dashboard/payments' },
+  { key: 'monthlyRevenue', label: 'Monthly Revenue', icon: TrendingUp, format: 'currency' as const, href: '/dashboard/payments' },
+  { key: 'pendingInvoices', label: 'Pending Invoices', icon: FileText, href: '/dashboard/payments' },
+  { key: 'totalRevenue', label: 'Total Revenue', icon: TrendingUp, format: 'currency' as const, href: '/dashboard/payments' },
   { key: 'outstandingBalance', label: 'Outstanding', icon: CreditCard, format: 'currency' as const, href: '/dashboard/payments' },
   { key: 'deliveredOrders', label: 'Delivered', icon: Package, href: '/dashboard/orders' },
 ] as const;
+
+function formatMonthLabel(month: string) {
+  const [year, m] = month.split('-');
+  const date = new Date(Number(year), Number(m) - 1, 1);
+  return date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+}
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -68,6 +79,11 @@ export default function DashboardPage() {
     );
   }
 
+  const maxTrend = Math.max(
+    ...(data.revenueTrend?.map((t) => t.amount) ?? [1]),
+    1,
+  );
+
   return (
     <div className="space-y-8">
       <div>
@@ -83,8 +99,6 @@ export default function DashboardPage() {
         {statConfig.map((stat) => {
           const Icon = stat.icon;
           const value = data.summary[stat.key] ?? 0;
-          // The naira sign renders poorly in the serif display font, so it
-          // gets a sans-serif span of its own.
           const display =
             'format' in stat && stat.format === 'currency' ? (
               <>
@@ -109,7 +123,7 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="font-display text-3xl font-semibold">
+                  <div className="font-display text-3xl font-semibold text-foreground">
                     {display}
                   </div>
                 </CardContent>
@@ -118,6 +132,81 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {data.revenueTrend && data.revenueTrend.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Trend</CardTitle>
+            <CardDescription>Monthly revenue over the last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.revenueTrend.map((item) => {
+                const pct = Math.round((item.amount / maxTrend) * 100);
+                return (
+                  <div key={item.month} className="flex items-center gap-4">
+                    <span className="w-16 shrink-0 text-sm text-muted-foreground">
+                      {formatMonthLabel(item.month)}
+                    </span>
+                    <div className="flex flex-1 items-center gap-3">
+                      <div className="h-3 flex-1 rounded-full bg-secondary">
+                        <div
+                          className="h-3 rounded-full bg-gold transition-all"
+                          style={{ width: `${Math.max(pct, item.amount > 0 ? 4 : 0)}%` }}
+                        />
+                      </div>
+                      <span className="w-24 text-right text-sm font-medium text-foreground">
+                        ₦{item.amount.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {data.inventorySummary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Inventory Summary</CardTitle>
+            <CardDescription>Stock overview at a glance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                { label: 'Products', value: data.inventorySummary.totalProducts },
+                { label: 'In stock', value: data.inventorySummary.availableStock },
+                { label: 'Low stock', value: data.inventorySummary.lowStock },
+                { label: 'Out of stock', value: data.inventorySummary.outOfStock },
+                {
+                  label: 'Total value',
+                  value: `₦${data.inventorySummary.totalInventoryValue.toLocaleString()}`,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-lg border p-3 text-center"
+                >
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 font-display text-xl font-semibold text-foreground">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/dashboard/inventory"
+              className={cn(
+                'mt-4 inline-block text-sm font-medium text-primary hover:underline',
+              )}
+            >
+              Manage inventory →
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {data.ordersByStatus && data.ordersByStatus.length > 0 && (
         <Card>
@@ -132,10 +221,12 @@ export default function DashboardPage() {
                   key={item.status}
                   className="flex items-center justify-between rounded-lg border p-3"
                 >
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium text-foreground">
                     {item.status.replace(/_/g, ' ')}
                   </span>
-                  <span className="text-lg font-bold">{item.count}</span>
+                  <span className="text-lg font-bold text-foreground">
+                    {item.count}
+                  </span>
                 </div>
               ))}
             </div>
@@ -157,7 +248,9 @@ export default function DashboardPage() {
                   className="flex items-center justify-between rounded-lg border p-4"
                 >
                   <div>
-                    <p className="font-medium">{order.orderNumber}</p>
+                    <p className="font-medium text-foreground">
+                      {order.orderNumber}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {order.customer
                         ? `${order.customer.firstName} ${order.customer.lastName}`
@@ -165,7 +258,9 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">{order.status}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {order.status}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       ₦{Number(order.totalAmount).toLocaleString()}
                     </p>

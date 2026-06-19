@@ -334,7 +334,18 @@ export interface DashboardData {
     deliveredOrders: number;
     totalRevenue?: number;
     outstandingBalance: number;
+    todayRevenue?: number;
+    monthlyRevenue?: number;
+    pendingInvoices?: number;
   };
+  revenueTrend?: Array<{ month: string; amount: number }>;
+  inventorySummary?: {
+    totalProducts: number;
+    availableStock: number;
+    lowStock: number;
+    outOfStock: number;
+    totalInventoryValue: number;
+  } | null;
   ordersByStatus?: { status: string; count: number }[];
   recentOrders?: Array<{
     id: string;
@@ -493,6 +504,8 @@ export const customersApi = {
       `/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`,
     ),
   get: (id: string) => api<CustomerDetail>(`/customers/${id}`),
+  delete: (id: string) =>
+    api<{ message: string }>(`/customers/${id}`, { method: 'DELETE' }),
 };
 
 export const stylesApi = {
@@ -550,6 +563,124 @@ export const stylesApi = {
   },
 };
 
+export interface InvoiceRecord {
+  id: string;
+  invoiceNumber: string;
+  amount: number;
+  paidAmount: number;
+  status: string;
+  dueDate?: string | null;
+  createdAt: string;
+  notes?: string | null;
+  order: {
+    orderNumber: string;
+    customer?: { firstName: string; lastName: string };
+  };
+  payments?: PaymentRecord[];
+}
+
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  reference?: string | null;
+  notes?: string | null;
+  paidAt?: string | null;
+  createdAt: string;
+  invoice?: {
+    invoiceNumber: string;
+    order?: {
+      orderNumber: string;
+      customer?: { firstName: string; lastName: string };
+    };
+  } | null;
+  receipt?: ReceiptRecord | null;
+}
+
+export interface ReceiptRecord {
+  id: string;
+  receiptNumber: string;
+  createdAt: string;
+  payment?: PaymentRecord;
+}
+
+export interface InventoryProduct {
+  id: string;
+  name: string;
+  category?: string | null;
+  description?: string | null;
+  sku?: string | null;
+  photoUrls: string[];
+  unitCost: number | string;
+  unitPrice: number | string;
+  quantity: number;
+  lowStockThreshold: number;
+  supplier?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  transactions?: InventoryTransaction[];
+}
+
+export interface InventoryDashboard {
+  totalProducts: number;
+  availableStock: number;
+  lowStock: number;
+  outOfStock: number;
+  totalInventoryValue: number;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  type: string;
+  quantity: number;
+  previousQty: number;
+  newQty: number;
+  unitCost?: number | string | null;
+  supplier?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  product?: { id: string; name: string; sku?: string | null };
+}
+
+export const inventoryApi = {
+  list: (params?: { q?: string; category?: string; stockStatus?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.q) search.set('q', params.q);
+    if (params?.category) search.set('category', params.category);
+    if (params?.stockStatus) search.set('stockStatus', params.stockStatus);
+    const qs = search.toString();
+    return api<InventoryProduct[]>(`/inventory${qs ? `?${qs}` : ''}`);
+  },
+  get: (id: string) => api<InventoryProduct>(`/inventory/${id}`),
+  create: (data: Partial<InventoryProduct>) =>
+    api<InventoryProduct>('/inventory', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<InventoryProduct>) =>
+    api<InventoryProduct>(`/inventory/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    api(`/inventory/${id}`, { method: 'DELETE' }),
+  restock: (
+    id: string,
+    data: { quantity: number; unitCost?: number; supplier?: string; notes?: string },
+  ) =>
+    api<InventoryProduct>(`/inventory/${id}/restock`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  dashboard: () => api<InventoryDashboard>('/inventory/dashboard'),
+  transactions: (productId?: string) =>
+    api<InventoryTransaction[]>(
+      `/inventory/transactions${productId ? `?productId=${productId}` : ''}`,
+    ),
+};
+
 export const paymentsApi = {
   createInvoice: (data: {
     orderId: string;
@@ -562,12 +693,15 @@ export const paymentsApi = {
       body: JSON.stringify(data),
     }),
   listInvoices: (orderId?: string) =>
-    api<Array<Record<string, unknown>>>(
+    api<InvoiceRecord[]>(
       `/payments/invoices${orderId ? `?orderId=${orderId}` : ''}`,
     ),
+  listPayments: () => api<PaymentRecord[]>('/payments'),
+  listReceipts: () => api<ReceiptRecord[]>('/payments/receipts'),
 };
 
 export const ordersApi = {
+  list: () => api<OrderRecord[]>('/orders'),
   create: (data: {
     customerId?: string;
     styleId?: string;
@@ -580,4 +714,18 @@ export const ordersApi = {
     discountCode?: string;
   }) =>
     api('/orders', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    api<{ message: string }>(`/orders/${id}`, { method: 'DELETE' }),
 };
+
+export interface OrderRecord {
+  id: string;
+  orderNumber: string;
+  status: string;
+  priority: string;
+  totalAmount: number;
+  balanceAmount: number;
+  progress: number;
+  deliveryDate?: string;
+  customer: { firstName: string; lastName: string; phone: string };
+}

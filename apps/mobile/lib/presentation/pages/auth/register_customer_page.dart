@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
 import 'package:stitchhub_mobile/presentation/blocs/auth/auth_bloc.dart';
+import 'package:stitchhub_mobile/presentation/widgets/password_text_field.dart';
 
 class RegisterCustomerPage extends StatefulWidget {
   const RegisterCustomerPage({super.key});
@@ -90,11 +91,7 @@ class _RegisterCustomerPageState extends State<RegisterCustomerPage> {
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                ),
+                PasswordTextField(controller: _passwordController),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: loading

@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, Plus, Search, Trash2, Video } from 'lucide-react';
+import { Edit, ImagePlus, Plus, Search, Trash2, Video } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +37,7 @@ export default function StylesPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editStyle, setEditStyle] = useState<StyleRecord | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -57,6 +58,27 @@ export default function StylesPage() {
     loadStyles();
   }, [loadStyles]);
 
+  function openCreateDialog() {
+    setEditStyle(null);
+    setForm(emptyForm);
+    setError('');
+    setDialogOpen(true);
+  }
+
+  function openEditDialog(style: StyleRecord) {
+    setEditStyle(style);
+    setForm({
+      name: style.name,
+      category: style.category,
+      description: style.description ?? '',
+      basePrice: style.basePrice != null ? String(style.basePrice) : '',
+      photoUrls: style.photoUrls ?? [],
+      videoUrls: style.videoUrls ?? [],
+    });
+    setError('');
+    setDialogOpen(true);
+  }
+
   async function handleUpload(files: FileList | null, type: 'photo' | 'video') {
     if (!files?.length) return;
     for (const file of Array.from(files)) {
@@ -75,29 +97,36 @@ export default function StylesPage() {
     }
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setSaving(true);
     try {
-      await stylesApi.create({
+      const payload = {
         name: form.name,
         category: form.category,
         description: form.description || undefined,
         basePrice: form.basePrice ? Number(form.basePrice) : undefined,
         photoUrls: form.photoUrls,
         videoUrls: form.videoUrls,
-        isActive: true,
-      });
+      };
+
+      if (editStyle) {
+        await stylesApi.update(editStyle.id, payload);
+      } else {
+        await stylesApi.create({ ...payload, isActive: true });
+      }
+
       setDialogOpen(false);
       setForm(emptyForm);
+      setEditStyle(null);
       loadStyles(search);
     } catch (err: unknown) {
       const apiErr = err as { message?: string | string[] };
       setError(
         Array.isArray(apiErr.message)
           ? apiErr.message.join(', ')
-          : apiErr.message ?? 'Failed to create style',
+          : apiErr.message ?? 'Failed to save style',
       );
     } finally {
       setSaving(false);
@@ -116,7 +145,7 @@ export default function StylesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">
             Style Store
@@ -125,7 +154,7 @@ export default function StylesPage() {
             Manage your lookbook — showcase designs with photos and videos
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Add Style
         </Button>
@@ -150,7 +179,7 @@ export default function StylesPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">No styles yet</p>
-            <Button className="mt-4" onClick={() => setDialogOpen(true)}>
+            <Button className="mt-4" onClick={openCreateDialog}>
               Add your first style
             </Button>
           </CardContent>
@@ -172,6 +201,7 @@ export default function StylesPage() {
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-muted-foreground">
+                    <ImagePlus className="mr-2 h-5 w-5" />
                     No photo
                   </div>
                 )}
@@ -183,12 +213,14 @@ export default function StylesPage() {
                 )}
               </div>
               <CardHeader>
-                <CardTitle className="text-lg">{style.name}</CardTitle>
+                <CardTitle className="text-lg text-foreground">
+                  {style.name}
+                </CardTitle>
                 <CardDescription>{style.category}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {style.basePrice != null && (
-                  <p className="font-display text-xl font-semibold">
+                  <p className="font-display text-xl font-semibold text-foreground">
                     ₦{Number(style.basePrice).toLocaleString()}
                   </p>
                 )}
@@ -198,6 +230,15 @@ export default function StylesPage() {
                   </p>
                 )}
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => openEditDialog(style)}
+                  >
+                    <Edit className="mr-1 h-3 w-3" />
+                    Edit
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -223,12 +264,14 @@ export default function StylesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Style</DialogTitle>
+            <DialogTitle>{editStyle ? 'Edit Style' : 'Add Style'}</DialogTitle>
             <DialogDescription>
-              Upload photos and videos customers can review before ordering
+              {editStyle
+                ? 'Update style details, photos, and pricing'
+                : 'Upload photos and videos customers can review before ordering'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
@@ -326,7 +369,7 @@ export default function StylesPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Style'}
+                {saving ? 'Saving...' : editStyle ? 'Save changes' : 'Save Style'}
               </Button>
             </DialogFooter>
           </form>

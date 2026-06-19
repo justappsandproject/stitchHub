@@ -201,8 +201,19 @@ class _CustomersPageState extends State<CustomersPage> {
                                     ? Text(customer.firstName.isNotEmpty ? customer.firstName[0] : '?')
                                     : null,
                               ),
-                              title: Text(customer.fullName),
-                              subtitle: Text('${customer.phone}${customer.email != null ? '\n${customer.email}' : ''}'),
+                              title: Text(
+                                customer.fullName,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${customer.phone}${customer.email != null ? '\n${customer.email}' : ''}',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
                               trailing: customer.isVip ? const Chip(label: Text('VIP')) : null,
                               onTap: () => context.push('${AppRouter.designerCustomerDetail}/${customer.id}'),
                             ),

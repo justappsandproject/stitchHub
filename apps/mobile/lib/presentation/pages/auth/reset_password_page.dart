@@ -4,6 +4,7 @@ import 'package:stitchhub_mobile/core/error/exceptions.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
+import 'package:stitchhub_mobile/presentation/widgets/password_text_field.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key, this.initialToken});
@@ -71,16 +72,14 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             decoration: const InputDecoration(labelText: 'Reset token'),
           ),
           const SizedBox(height: 16),
-          TextField(
+          PasswordTextField(
             controller: _passwordController,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'New password'),
+            labelText: 'New password',
           ),
           const SizedBox(height: 16),
-          TextField(
+          PasswordTextField(
             controller: _confirmController,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Confirm password'),
+            labelText: 'Confirm password',
           ),
           if (_error != null) ...[
             const SizedBox(height: 16),

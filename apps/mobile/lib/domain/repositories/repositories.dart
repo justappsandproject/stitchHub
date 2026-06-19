@@ -39,12 +39,28 @@ abstract class OrdersRepository {
   Future<OrderEntity?> getOrder(String id);
   Future<OrderEntity> createOrder(Map<String, dynamic> data);
   Future<void> updateStatus(String orderId, String status);
+  Future<void> deleteOrder(String id);
 }
 
 abstract class CustomersRepository {
   Future<List<CustomerEntity>> getCustomers({String? query});
   Future<Map<String, dynamic>> getCustomerDetail(String id);
   Future<CustomerEntity> createCustomer(Map<String, dynamic> data);
+  Future<void> deleteCustomer(String id);
+}
+
+abstract class InventoryRepository {
+  Future<Map<String, dynamic>> getDashboard();
+  Future<List<Map<String, dynamic>>> listProducts({
+    String? query,
+    String? category,
+    String? stockStatus,
+  });
+  Future<Map<String, dynamic>> getProduct(String id);
+  Future<Map<String, dynamic>> createProduct(Map<String, dynamic> data);
+  Future<Map<String, dynamic>> updateProduct(String id, Map<String, dynamic> data);
+  Future<void> deleteProduct(String id);
+  Future<Map<String, dynamic>> restockProduct(String id, Map<String, dynamic> data);
 }
 
 abstract class DashboardRepository {

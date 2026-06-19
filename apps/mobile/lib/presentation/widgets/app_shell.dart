@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/constants/enums.dart';
+import 'package:stitchhub_mobile/core/router/app_router.dart';
 import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
@@ -34,7 +35,7 @@ class DesignerShell extends StatelessWidget {
           ...?actions,
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => onNavigate(5),
+            onPressed: () => context.push(AppRouter.settings),
           ),
         ],
       ),
@@ -181,7 +182,8 @@ Widget buildDashboardGrid(
   IconData? iconFor(String label) => switch (label) {
         'Customers' => Icons.people_outline,
         'Total Orders' || 'Active Orders' || 'Delivered' => Icons.shopping_bag_outlined,
-        'Revenue' || 'Outstanding' => Icons.payments_outlined,
+        'Revenue' || 'Outstanding' || 'Today Revenue' || 'This Month' => Icons.payments_outlined,
+        'Pending Invoices' => Icons.receipt_long_outlined,
         _ => Icons.insights_outlined,
       };
 
@@ -217,6 +219,9 @@ void navigateDashboardStat(BuildContext context, String label) {
       context.go('/designer/orders');
     case 'Revenue':
     case 'Outstanding':
+    case 'Today Revenue':
+    case 'This Month':
+    case 'Pending Invoices':
       context.go('/designer/billing');
     default:
       break;

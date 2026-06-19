@@ -12,6 +12,7 @@ import 'package:stitchhub_mobile/domain/entities/user_entity.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 import 'package:stitchhub_mobile/presentation/blocs/auth/auth_bloc.dart';
+import 'package:stitchhub_mobile/presentation/widgets/password_text_field.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -161,7 +162,15 @@ class _SettingsPageState extends State<SettingsPage> {
         }
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Settings')),
+          appBar: AppBar(
+            title: const Text('Settings'),
+            leading: context.canPop()
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.pop(),
+                  )
+                : null,
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -223,11 +232,20 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const Text('Change password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 16),
-                      TextField(controller: _currentPasswordController, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
+                      PasswordTextField(
+                        controller: _currentPasswordController,
+                        labelText: 'Current password',
+                      ),
                       const SizedBox(height: 12),
-                      TextField(controller: _newPasswordController, obscureText: true, decoration: const InputDecoration(labelText: 'New password')),
+                      PasswordTextField(
+                        controller: _newPasswordController,
+                        labelText: 'New password',
+                      ),
                       const SizedBox(height: 12),
-                      TextField(controller: _confirmPasswordController, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm password')),
+                      PasswordTextField(
+                        controller: _confirmPasswordController,
+                        labelText: 'Confirm password',
+                      ),
                       if (_passwordMessage != null) ...[
                         const SizedBox(height: 8),
                         Text(_passwordMessage!, style: const TextStyle(color: Colors.green)),
@@ -297,8 +315,17 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ],
+              if (user != null && isStaff(user.role)) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => context.go(AppRouter.designerHome),
+                  icon: const Icon(Icons.dashboard_outlined),
+                  label: const Text('Back to Dashboard'),
+                ),
+              ],
               const SizedBox(height: 16),
               ListTile(
+                contentPadding: EdgeInsets.zero,
                 title: const Text('Push notifications'),
                 subtitle: Text(
                   sl<PushNotificationService>().cachedToken != null
@@ -307,13 +334,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               ListTile(
+                contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.sync),
                 title: const Text('Offline sync'),
                 subtitle: const Text('Changes queue automatically when offline'),
               ),
               ListTile(
+                contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Sign out'),
+                title: const Text('Sign out', style: TextStyle(color: Colors.red)),
                 onTap: () {
                   context.read<AuthBloc>().add(const AuthLogoutRequested());
                   context.go(AppRouter.login);

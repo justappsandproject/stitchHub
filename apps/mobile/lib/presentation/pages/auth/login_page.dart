@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/presentation/blocs/auth/auth_bloc.dart';
+import 'package:stitchhub_mobile/presentation/widgets/password_text_field.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -62,11 +63,7 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                ),
+                PasswordTextField(controller: _passwordController),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: loading

@@ -141,13 +141,31 @@ export class PaymentsService {
     return { payment, receipt };
   }
 
-  async findPayments(tenantId: string) {
+  async findPayments(tenantId: string, user?: JwtPayload) {
+    const where: Prisma.PaymentWhereInput = { tenantId };
+
+    if (user?.role === UserRole.CUSTOMER) {
+      const customerId = await resolveCustomerId(this.prisma, user);
+      if (!customerId) {
+        throw new ForbiddenException('No customer profile linked to this account');
+      }
+      where.invoice = { order: { customerId } };
+    }
+
     return this.prisma.payment.findMany({
-      where: { tenantId },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         invoice: {
-          select: { invoiceNumber: true, order: { select: { orderNumber: true } } },
+          select: {
+            invoiceNumber: true,
+            order: {
+              select: {
+                orderNumber: true,
+                customer: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
         },
         receipt: true,
       },

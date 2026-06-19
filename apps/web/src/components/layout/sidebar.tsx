@@ -2,10 +2,10 @@
 
 import {
   CreditCard,
-  Gem,
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Package,
   Palette,
   Ruler,
   Scissors,
@@ -27,8 +27,8 @@ const navItems = [
   { href: '/dashboard/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/dashboard/styles', label: 'Style Store', icon: Palette },
   { href: '/dashboard/production', label: 'Production', icon: Scissors },
+  { href: '/dashboard/inventory', label: 'Inventory', icon: Package },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-  { href: '/dashboard/billing', label: 'Billing', icon: Gem },
   { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];

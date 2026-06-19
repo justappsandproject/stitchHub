@@ -168,7 +168,7 @@ export default function CustomersPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg">
+                    <CardTitle className="text-lg text-foreground">
                       {customer.firstName} {customer.lastName}
                     </CardTitle>
                     <CardDescription>{customer.phone}</CardDescription>

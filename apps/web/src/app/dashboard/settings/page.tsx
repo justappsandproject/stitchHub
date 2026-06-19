@@ -1,7 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ArrowLeft, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { PasswordInput } from '@/components/ui/password-input';
+import { SubscriptionSection } from '@/components/dashboard/subscription-section';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,11 +16,11 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import Link from 'next/link';
-import { authApi, billingApi, uploadFile } from '@/lib/api';
-import { saveUser } from '@/lib/session';
+import { authApi, uploadFile } from '@/lib/api';
+import { clearSession, saveUser } from '@/lib/session';
 
 export default function DashboardSettingsPage() {
+  const router = useRouter();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,26 +36,25 @@ export default function DashboardSettingsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [plan, setPlan] = useState<{
-    plan: string;
-    status: string;
-    configName?: string;
-    priceNgn?: number;
-    usageCustomers?: number;
-    maxCustomers?: number;
-    usageOrdersThisMonth?: number;
-    maxOrdersPerMonth?: number;
-  } | null>(null);
 
   useEffect(() => {
-    authApi.getProfile().then((profile) => {
-      setFirstName(profile.firstName);
-      setLastName(profile.lastName);
-      setPhone(profile.phone ?? '');
-      setEmail(profile.email);
-      setPhotoUrl(profile.photoUrl ?? '');
-    }).catch(console.error);
-    billingApi.getCurrent().then(setPlan).catch(console.error);
+    authApi
+      .getProfile()
+      .then((profile) => {
+        setFirstName(profile.firstName);
+        setLastName(profile.lastName);
+        setPhone(profile.phone ?? '');
+        setEmail(profile.email);
+        setPhotoUrl(profile.photoUrl ?? '');
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#subscription') {
+      const el = document.getElementById('subscription');
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, []);
 
   async function handleProfileSubmit(e: React.FormEvent) {
@@ -114,14 +117,25 @@ export default function DashboardSettingsPage() {
     }
   }
 
+  function handleSignOut() {
+    clearSession();
+    router.push('/login');
+  }
+
   return (
-    <div className="mx-auto max-w-lg space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <div>
+        <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
+          <Link href="/dashboard">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        </Button>
         <h1 className="font-display text-3xl font-semibold tracking-tight">
           Settings
         </h1>
         <p className="mt-1 text-muted-foreground">
-          Manage your profile and account security
+          Manage your profile, subscription, and account security
         </p>
       </div>
 
@@ -144,29 +158,58 @@ export default function DashboardSettingsPage() {
             )}
             <div className="space-y-2">
               <Label htmlFor="photo">Profile photo</Label>
-              <Input id="photo" type="file" accept="image/*" onChange={handlePhotoChange} />
+              <Input
+                id="photo"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+              />
               {photoUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={photoUrl} alt="Profile" className="mt-2 h-20 w-20 rounded-full object-cover" />
+                <img
+                  src={photoUrl}
+                  alt="Profile"
+                  className="mt-2 h-20 w-20 rounded-full object-cover"
+                />
               )}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
-                <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                <Input
+                  id="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last name</Label>
-                <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                <Input
+                  id="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
             </div>
             <Button type="submit" disabled={profileLoading}>
               {profileLoading ? 'Saving...' : 'Save profile'}
@@ -177,42 +220,15 @@ export default function DashboardSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fashion house plan</CardTitle>
-          <CardDescription>Your atelier subscription and usage</CardDescription>
+          <CardTitle>Subscription</CardTitle>
+          <CardDescription>
+            Your atelier plan, usage, and Paystack billing
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {plan ? (
-            <>
-              <p className="text-lg font-semibold">
-                {plan.configName ?? plan.plan} plan
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Status: {plan.status.replace(/_/g, ' ')}
-              </p>
-              {plan.priceNgn != null && (
-                <p className="text-sm">₦{plan.priceNgn.toLocaleString()}/month</p>
-              )}
-              {plan.usageCustomers != null && (
-                <p className="text-sm">
-                  Customers: {plan.usageCustomers}
-                  {plan.maxCustomers != null ? ` / ${plan.maxCustomers}` : ''}
-                </p>
-              )}
-              {plan.usageOrdersThisMonth != null && (
-                <p className="text-sm">
-                  Orders this month: {plan.usageOrdersThisMonth}
-                  {plan.maxOrdersPerMonth != null
-                    ? ` / ${plan.maxOrdersPerMonth}`
-                    : ''}
-                </p>
-              )}
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/billing">Manage billing</Link>
-              </Button>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Loading plan...</p>
-          )}
+        <CardContent>
+          <Suspense fallback={<p className="text-muted-foreground">Loading subscription...</p>}>
+            <SubscriptionSection />
+          </Suspense>
         </CardContent>
       </Card>
 
@@ -268,6 +284,13 @@ export default function DashboardSettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <div className="border-t pt-6">
+        <Button variant="outline" onClick={handleSignOut} className="w-full sm:w-auto">
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign out
+        </Button>
+      </div>
     </div>
   );
 }

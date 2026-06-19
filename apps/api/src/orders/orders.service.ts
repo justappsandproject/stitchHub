@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma, UserRole } from '@prisma/client';
+import { OrderStatus, Prisma, UserRole, InvoiceStatus } from '@prisma/client';
 import { ORDER_STATUS_PROGRESS } from '@stitchhub/shared';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { resolveCustomerId } from '../common/utils/customer-scope';
@@ -26,6 +26,45 @@ export class OrdersService {
     private discounts: DiscountsService,
     private portfolio: PortfolioService,
   ) {}
+
+  private notDeleted(): Prisma.OrderWhereInput {
+    return { deletedAt: null };
+  }
+
+  private async generateInvoiceNumber(tenantId: string): Promise<string> {
+    const count = await this.prisma.invoice.count({ where: { tenantId } });
+    const year = new Date().getFullYear();
+    return `INV-${year}-${String(count + 1).padStart(5, '0')}`;
+  }
+
+  private async maybeCreateInvoiceForOrder(
+    tenantId: string,
+    orderId: string,
+    amount: number,
+  ) {
+    if (amount <= 0) return null;
+
+    const existing = await this.prisma.invoice.findFirst({
+      where: { tenantId, orderId, status: { not: InvoiceStatus.CANCELLED } },
+    });
+    if (existing) return existing;
+
+    const invoiceNumber = await this.generateInvoiceNumber(tenantId);
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 14);
+
+    return this.prisma.invoice.create({
+      data: {
+        tenantId,
+        orderId,
+        invoiceNumber,
+        amount,
+        dueDate,
+        status: InvoiceStatus.SENT,
+        notes: 'Auto-generated from order',
+      },
+    });
+  }
 
   private async generateOrderNumber(tenantId: string): Promise<string> {
     const count = await this.prisma.order.count({ where: { tenantId } });
@@ -126,11 +165,25 @@ export class OrdersService {
       });
     }
 
+    if (user?.role !== UserRole.CUSTOMER && Number(order.balanceAmount) > 0) {
+      await this.maybeCreateInvoiceForOrder(
+        tenantId,
+        order.id,
+        Number(order.balanceAmount),
+      );
+    } else if (user?.role === UserRole.CUSTOMER && Number(order.balanceAmount) > 0) {
+      await this.maybeCreateInvoiceForOrder(
+        tenantId,
+        order.id,
+        Number(order.balanceAmount),
+      );
+    }
+
     return order;
   }
 
   async findAll(tenantId: string, query: OrderQueryDto, user?: JwtPayload) {
-    const where: Prisma.OrderWhereInput = { tenantId };
+    const where: Prisma.OrderWhereInput = { tenantId, ...this.notDeleted() };
 
     if (user?.role === UserRole.CUSTOMER) {
       const customerId = await resolveCustomerId(this.prisma, user);
@@ -187,7 +240,7 @@ export class OrdersService {
 
   async findOne(tenantId: string, id: string, user?: JwtPayload) {
     const order = await this.prisma.order.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, ...this.notDeleted() },
       include: {
         customer: true,
         style: true,
@@ -249,5 +302,24 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  async remove(tenantId: string, id: string, changedBy?: string) {
+    await this.findOne(tenantId, id);
+
+    return this.prisma.order.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        status: OrderStatus.CANCELLED,
+        statusHistory: {
+          create: {
+            status: OrderStatus.CANCELLED,
+            notes: 'Order deleted',
+            changedBy,
+          },
+        },
+      },
+    });
   }
 }

@@ -35,12 +35,12 @@ export function SubscriptionBanner() {
           <p className="text-amber-800/80 dark:text-amber-200/80">
             Your free trial ended on{' '}
             {new Date(sub.currentPeriodEnd).toLocaleDateString()}. Pay via
-            Paystack on the Billing page to restore full access to your
+            Paystack on the Subscription settings page to restore full access to your
             atelier.
           </p>
         </div>
         <Button asChild size="sm">
-          <Link href="/dashboard/billing">Go to Billing</Link>
+          <Link href="/dashboard/settings#subscription">Go to Subscription</Link>
         </Button>
       </div>
     </div>

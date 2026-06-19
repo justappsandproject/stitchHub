@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -102,5 +103,12 @@ export class OrdersController {
   ) {
     const tenantId = resolveTenantId(user);
     return this.ordersService.updateStatus(tenantId, id, dto, user.sub);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
+  remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const tenantId = resolveTenantId(user);
+    return this.ordersService.remove(tenantId, id, user.sub);
   }
 }
