@@ -11,6 +11,7 @@ import {
   Scissors,
   Settings,
   ShoppingBag,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/dashboard/production', label: 'Production', icon: Scissors },
   { href: '/dashboard/inventory', label: 'Inventory', icon: Package },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
+  { href: '/dashboard/financials', label: 'Financials', icon: TrendingUp },
   { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];

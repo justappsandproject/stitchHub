@@ -229,13 +229,23 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: {
         tenant: { select: { name: true } },
         customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
       },
     });
+
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { username: dto.email },
+        include: {
+          tenant: { select: { name: true } },
+          customer: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        },
+      });
+    }
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
@@ -438,24 +448,28 @@ export class AuthService {
   private toAuthUser(user: {
     id: string;
     email: string;
+    username?: string | null;
     role: UserRole;
     tenantId: string | null;
     firstName: string;
     lastName: string;
     phone?: string | null;
     photoUrl?: string | null;
+    mustResetPassword?: boolean;
     tenant?: { id?: string; name: string; slug?: string } | null;
     customer?: { id: string; firstName: string; lastName: string; phone: string } | null;
   }) {
     return {
       id: user.id,
       email: user.email,
+      username: user.username ?? null,
       role: user.role,
       tenantId: user.tenantId,
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone ?? null,
       photoUrl: user.photoUrl ?? null,
+      mustResetPassword: user.mustResetPassword ?? false,
       fashionHouseName: user.tenant?.name ?? null,
       customerId: user.customer?.id ?? null,
       customer: user.customer ?? null,

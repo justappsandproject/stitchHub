@@ -1,17 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { MeasurementCategory, Prisma, UserRole } from '@prisma/client';
+import { BODY_MEASUREMENT_FIELDS } from '@stitchhub/shared';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { assertCustomerResource } from '../common/utils/customer-scope';
+import { AuditService } from '../common/services/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  CreateBodyMeasurementDto,
   CreateMeasurementDto,
   CreateMeasurementTemplateDto,
+  MeasurementQueryDto,
   UpdateMeasurementDto,
 } from './dto/measurement.dto';
 
+const BODY_TEMPLATE_NAME = 'Standard Body Measurements';
+
 @Injectable()
 export class MeasurementsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
   async getTemplates(tenantId: string) {
     return this.prisma.measurementTemplate.findMany({
@@ -58,9 +67,96 @@ export class MeasurementsService {
         version,
         values: dto.values,
         notes: dto.notes,
+        unit: dto.unit ?? 'cm',
+        photoUrls: dto.photoUrls ?? [],
         takenBy,
+        takenById: takenBy,
       },
       include: { template: true, customer: true },
+    });
+  }
+
+  private async ensureBodyTemplate(tenantId: string) {
+    const existing = await this.prisma.measurementTemplate.findFirst({
+      where: { tenantId, name: BODY_TEMPLATE_NAME },
+    });
+    if (existing) return existing;
+
+    const allFields = [
+      ...BODY_MEASUREMENT_FIELDS.upperBody,
+      ...BODY_MEASUREMENT_FIELDS.lowerBody,
+      ...BODY_MEASUREMENT_FIELDS.fullBody,
+    ].map((key) => ({ key, label: key, type: 'number' }));
+
+    return this.prisma.measurementTemplate.create({
+      data: {
+        tenantId,
+        name: BODY_TEMPLATE_NAME,
+        category: MeasurementCategory.WOMEN,
+        isDefault: true,
+        fields: allFields,
+      },
+    });
+  }
+
+  async createBodyMeasurement(
+    tenantId: string,
+    dto: CreateBodyMeasurementDto,
+    takenBy?: string,
+  ) {
+    const template = await this.ensureBodyTemplate(tenantId);
+    const measurement = await this.create(
+      tenantId,
+      {
+        customerId: dto.customerId,
+        templateId: template.id,
+        values: dto.values,
+        notes: dto.notes,
+        unit: dto.unit,
+        photoUrls: dto.photoUrls,
+      },
+      takenBy,
+    );
+
+    await this.audit.log({
+      tenantId,
+      userId: takenBy,
+      action: 'MEASUREMENT_ADDED',
+      entity: 'Measurement',
+      entityId: measurement.id,
+      metadata: { customerId: dto.customerId },
+    });
+
+    return measurement;
+  }
+
+  async findAll(tenantId: string, query: MeasurementQueryDto) {
+    const where: Prisma.MeasurementWhereInput = { tenantId };
+
+    if (query.customerId) where.customerId = query.customerId;
+    if (query.from || query.to) {
+      where.createdAt = {};
+      if (query.from) where.createdAt.gte = new Date(query.from);
+      if (query.to) where.createdAt.lte = new Date(query.to);
+    }
+
+    return this.prisma.measurement.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        template: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        takenByUser: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
     });
   }
 

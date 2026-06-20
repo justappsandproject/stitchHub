@@ -1,18 +1,10 @@
 'use client';
 
-import {
-  ArrowLeft,
-  Mail,
-  MapPin,
-  Phone,
-  Ruler,
-  ShoppingBag,
-  Star,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, Mail, MapPin, Phone, Ruler, ShoppingBag, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { TakeMeasurementDialog } from '@/components/measurements/take-measurement-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +45,8 @@ export default function CustomerDetailPage() {
   const [error, setError] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [measureOpen, setMeasureOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'measurements' | 'tickets'>('overview');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -143,171 +137,194 @@ export default function CustomerDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href={`/dashboard/measurements?customerId=${customer.id}`}>
-              <Ruler className="mr-2 h-4 w-4" />
-              Add measurement
+          <Button onClick={() => setMeasureOpen(true)}>
+            <Ruler className="mr-2 h-4 w-4" />
+            Take Measurement
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/dashboard/orders/new?customerId=${customer.id}`}>
+              New order
             </Link>
           </Button>
           <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete customer
+            Delete
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Contact & profile</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              {customer.phone}
-            </div>
-            {customer.email && (
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                {customer.email}
-              </div>
-            )}
-            {customer.address && (
-              <div className="flex items-start gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                {customer.address}
-              </div>
-            )}
-            {customer.gender && (
-              <p>
-                <span className="text-muted-foreground">Gender:</span>{' '}
-                {customer.gender}
-              </p>
-            )}
-            {customer.user && (
-              <div className="rounded-lg border bg-secondary/30 p-3">
-                <p className="font-medium text-foreground">Portal account</p>
-                <p className="text-muted-foreground">{customer.user.email}</p>
-                {customer.user.lastLoginAt && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Last login:{' '}
-                    {new Date(customer.user.lastLoginAt).toLocaleString()}
-                  </p>
+      <div className="flex gap-2 border-b">
+        {(['overview', 'measurements', 'tickets'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`border-b-2 px-4 py-2 text-sm font-medium capitalize ${
+              activeTab === tab
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'overview' && (
+        <>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Contact & profile</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex items-center gap-2 text-foreground">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  {customer.phone}
+                </div>
+                {customer.email && (
+                  <div className="flex items-center gap-2 text-foreground">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    {customer.email}
+                  </div>
                 )}
-              </div>
-            )}
-            {customer.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {customer.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-secondary px-2 py-0.5 text-xs"
+                {customer.address && (
+                  <div className="flex items-start gap-2 text-foreground">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    {customer.address}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5" />
+                Order history
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {customer.orders.length === 0 ? (
+                <p className="text-muted-foreground">No orders yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {customer.orders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {order.orderNumber}
+                        </p>
+                        {order.style && (
+                          <p className="text-sm text-muted-foreground">
+                            {order.style.name}
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          statusColors[order.status] ?? 'bg-muted'
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {activeTab === 'measurements' && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Measurement History</CardTitle>
+            <Button size="sm" onClick={() => setMeasureOpen(true)}>
+              <Ruler className="mr-2 h-4 w-4" />
+              Take Measurement
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {customer.measurements.length === 0 ? (
+              <p className="text-muted-foreground">No measurements recorded</p>
+            ) : (
+              <div className="space-y-4">
+                {customer.measurements.map((m) => (
+                  <div
+                    key={m.id}
+                    className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
                   >
-                    {tag}
-                  </span>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-foreground">
+                        {m.template?.name ?? 'Body Measurement'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(m.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(m.values).map(([key, val]) => (
+                        <span
+                          key={key}
+                          className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-100"
+                        >
+                          {key}: {val}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/dashboard/measurements?highlight=${m.id}`}>
+                          View
+                        </Link>
+                      </Button>
+                      <Button size="sm" asChild>
+                        <Link
+                          href={`/dashboard/orders/new?customerId=${customer.id}&measurementId=${m.id}`}
+                        >
+                          Use for Order
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </div>
-            )}
-            {customer.notes && (
-              <div>
-                <p className="mb-1 font-medium text-foreground">Notes</p>
-                <p className="text-muted-foreground">{customer.notes}</p>
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ruler className="h-5 w-5" />
-            Measurements
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {customer.measurements.length === 0 ? (
-            <p className="text-muted-foreground">No measurements recorded</p>
-          ) : (
-            <div className="space-y-4">
-              {customer.measurements.map((m) => (
-                <div key={m.id} className="rounded-lg border p-4">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium text-foreground">
-                      {m.template?.name ?? 'Measurement'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(m.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(m.values).map(([key, val]) => (
-                      <span
-                        key={key}
-                        className="rounded-md bg-secondary px-2 py-1 text-xs"
-                      >
-                        {key}: {val}
-                      </span>
-                    ))}
-                  </div>
-                  {m.notes && (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {m.notes}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {activeTab === 'tickets' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Support Tickets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Customer support tickets appear here. View all tickets from Settings or
+              filter by customer in the tickets API.
+            </p>
+            <Button className="mt-4" variant="outline" asChild>
+              <Link href={`/dashboard/customers/${customer.id}?tab=tickets`}>
+                Refresh tickets
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5" />
-            Order history
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {customer.orders.length === 0 ? (
-            <p className="text-muted-foreground">No orders yet</p>
-          ) : (
-            <div className="space-y-3">
-              {customer.orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {order.orderNumber}
-                    </p>
-                    {order.style && (
-                      <p className="text-sm text-muted-foreground">
-                        {order.style.name} · {order.style.category}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                        statusColors[order.status] ??
-                        'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {order.status.replace(/_/g, ' ')}
-                    </span>
-                    <p className="mt-1 text-sm font-medium text-foreground">
-                      ₦{Number(order.totalAmount).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <TakeMeasurementDialog
+        customerId={customer.id}
+        open={measureOpen}
+        onOpenChange={setMeasureOpen}
+        onSaved={load}
+      />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
@@ -318,7 +335,7 @@ export default function CustomerDetailPage() {
               <strong>
                 {customer.firstName} {customer.lastName}
               </strong>
-              . Customers with active orders cannot be deleted.
+              .
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

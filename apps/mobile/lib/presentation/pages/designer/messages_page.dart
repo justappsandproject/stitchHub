@@ -30,11 +30,11 @@ class _MessagesPageState extends State<MessagesPage> {
       case 1:
         context.go(AppRouter.designerOrders);
       case 2:
-        context.go(AppRouter.designerCustomers);
-      case 3:
         context.go(AppRouter.designerMessages);
+      case 3:
+        context.go(AppRouter.designerCustomers);
       case 4:
-        context.go(AppRouter.designerBilling);
+        context.go(AppRouter.designerMore);
     }
   }
 
@@ -42,7 +42,7 @@ class _MessagesPageState extends State<MessagesPage> {
   Widget build(BuildContext context) {
     return DesignerShell(
       title: 'Support Messages',
-      selectedIndex: 3,
+      selectedIndex: 2,
       onNavigate: _navigate,
       unreadMessages: 0,
       body: BlocBuilder<MessagesBloc, MessagesState>(

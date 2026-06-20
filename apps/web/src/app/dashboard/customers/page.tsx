@@ -2,6 +2,7 @@
 
 import { Plus, Search, Star } from 'lucide-react';
 import Link from 'next/link';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -128,10 +129,15 @@ export default function CustomersPage() {
             Manage your customer profiles and history
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Customer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/customers/onboard">Onboard Customer</Link>
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Customer
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">

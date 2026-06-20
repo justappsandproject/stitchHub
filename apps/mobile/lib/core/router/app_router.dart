@@ -28,6 +28,7 @@ import 'package:stitchhub_mobile/presentation/pages/designer/create_order_page.d
 import 'package:stitchhub_mobile/presentation/pages/designer/customer_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_styles_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_inventory_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/designer/designer_more_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/plan_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
@@ -48,6 +49,7 @@ class AppRouter {
   static const designerCustomers = '/designer/customers';
   static const designerMessages = '/designer/messages';
   static const designerBilling = '/designer/billing';
+  static const designerMore = '/designer/more';
   static const designerPortfolio = '/designer/portfolio';
   static const designerDiscounts = '/designer/discounts';
   static const designerMeasurements = '/designer/measurements';
@@ -133,6 +135,7 @@ class AppRouter {
         ),
         GoRoute(path: designerMessages, builder: (_, __) => const MessagesPage()),
         GoRoute(path: designerBilling, builder: (_, __) => const BillingPage()),
+        GoRoute(path: designerMore, builder: (_, __) => const DesignerMorePage()),
         GoRoute(path: designerPortfolio, builder: (_, __) => const DesignerPortfolioPage()),
         GoRoute(path: designerDiscounts, builder: (_, __) => const DesignerDiscountsPage()),
         GoRoute(path: designerStyles, builder: (_, __) => const DesignerStylesPage()),

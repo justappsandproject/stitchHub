@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
 import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 
@@ -103,15 +104,137 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
               ? Center(child: Text(_error!))
               : _data == null
                   ? const Center(child: Text('Not found'))
-                  : _CustomerDetailBody(data: _data!),
+                  : _CustomerDetailBody(data: _data!, onReload: _load),
     );
   }
 }
 
+Future<void> _showTakeMeasurement(
+  BuildContext context,
+  String customerId,
+  Future<void> Function() onSaved,
+) async {
+  final fields = {
+    'Upper Body': ['chestBust', 'shoulderWidth', 'sleeveLength', 'armLength', 'neck', 'armhole'],
+    'Lower Body': ['waist', 'hip', 'thigh', 'inseam', 'outseam', 'trouserLength'],
+    'Full Body': ['height', 'backLength', 'frontLength', 'dressLength'],
+  };
+  final controllers = <String, TextEditingController>{};
+  for (final section in fields.values) {
+    for (final key in section) {
+      controllers[key] = TextEditingController();
+    }
+  }
+  final notesController = TextEditingController();
+  var unit = 'cm';
+  final photoUrls = <String>[];
+  var saving = false;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setSheetState) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Take Measurement', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('cm'),
+                    selected: unit == 'cm',
+                    onSelected: (_) => setSheetState(() => unit = 'cm'),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('inches'),
+                    selected: unit == 'inches',
+                    onSelected: (_) => setSheetState(() => unit = 'inches'),
+                  ),
+                ],
+              ),
+              for (final entry in fields.entries) ...[
+                const SizedBox(height: 12),
+                Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
+                for (final key in entry.value)
+                  TextField(
+                    controller: controllers[key],
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(labelText: key),
+                  ),
+              ],
+              TextField(
+                controller: notesController,
+                decoration: const InputDecoration(labelText: 'Custom notes'),
+                maxLines: 2,
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+                  if (file == null) return;
+                  final url = await sl<UploadsRepository>().uploadImage(file.path);
+                  setSheetState(() => photoUrls.add(url));
+                },
+                icon: const Icon(Icons.add_a_photo),
+                label: const Text('Add reference photo'),
+              ),
+              FilledButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setSheetState(() => saving = true);
+                        try {
+                          final values = <String, num>{};
+                          for (final e in controllers.entries) {
+                            final v = double.tryParse(e.value.text.trim());
+                            if (v != null) values[e.key] = v;
+                          }
+                          await sl<MeasurementsRepository>().createBodyMeasurement({
+                            'customerId': customerId,
+                            'values': values,
+                            'unit': unit,
+                            'notes': notesController.text.trim().isEmpty
+                                ? null
+                                : notesController.text.trim(),
+                            'photoUrls': photoUrls,
+                          });
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          await onSaved();
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text(e.toString())),
+                            );
+                          }
+                        } finally {
+                          if (ctx.mounted) setSheetState(() => saving = false);
+                        }
+                      },
+                child: Text(saving ? 'Saving...' : 'Save Measurement'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _CustomerDetailBody extends StatelessWidget {
-  const _CustomerDetailBody({required this.data});
+  const _CustomerDetailBody({required this.data, required this.onReload});
 
   final Map<String, dynamic> data;
+  final Future<void> Function() onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -255,6 +378,16 @@ class _CustomerDetailBody extends StatelessWidget {
                 ),
         ),
         const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: () => _showTakeMeasurement(
+            context,
+            data['id'] as String,
+            onReload,
+          ),
+          icon: const Icon(Icons.straighten),
+          label: const Text('Take Measurement'),
+        ),
+        const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () => context.push(
             '${AppRouter.designerMeasurements}?customerId=${data['id']}&name=${Uri.encodeComponent('$firstName $lastName')}',

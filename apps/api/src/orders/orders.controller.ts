@@ -19,6 +19,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
 import {
+  ConfirmOrderDto,
   CreateOrderDto,
   OrderQueryDto,
   UpdateOrderStatusDto,
@@ -42,6 +43,17 @@ export class OrdersController {
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateOrderDto) {
     const tenantId = resolveTenantId(user);
     return this.ordersService.create(tenantId, dto, user);
+  }
+
+  @Post('confirm')
+  @Roles(
+    UserRole.TENANT_OWNER,
+    UserRole.MANAGER,
+    UserRole.TAILOR,
+  )
+  confirm(@CurrentUser() user: JwtPayload, @Body() dto: ConfirmOrderDto) {
+    const tenantId = resolveTenantId(user);
+    return this.ordersService.confirm(tenantId, dto, user);
   }
 
   @Get()

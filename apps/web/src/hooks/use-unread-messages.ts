@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { messagesApi } from '@/lib/api';
+import { conversationsApi } from '@/lib/api';
 
 export const MESSAGES_READ_EVENT = 'stitchhub:messages-read';
 
@@ -15,7 +15,7 @@ export function useUnreadMessages(pollMs = 30000) {
   const [count, setCount] = useState(0);
 
   const refresh = useCallback(() => {
-    messagesApi
+    conversationsApi
       .unreadCount()
       .then((r) => setCount(r.count))
       .catch(() => setCount(0));

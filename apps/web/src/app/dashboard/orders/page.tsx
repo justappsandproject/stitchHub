@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -179,9 +180,11 @@ export default function OrdersPage() {
             Track and manage customer orders
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Order
+        <Button asChild>
+          <Link href="/dashboard/orders/new">
+            <Plus className="mr-2 h-4 w-4" />
+            New Order
+          </Link>
         </Button>
       </div>
 

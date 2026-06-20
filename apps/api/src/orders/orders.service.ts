@@ -9,11 +9,13 @@ import { ORDER_STATUS_PROGRESS } from '@stitchhub/shared';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { resolveCustomerId } from '../common/utils/customer-scope';
 import { DiscountsService } from '../discounts/discounts.service';
+import { InvoicePdfService } from '../payments/invoice-pdf.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
   CreateOrderDto,
+  ConfirmOrderDto,
   OrderQueryDto,
   UpdateOrderStatusDto,
 } from './dto/order.dto';
@@ -25,6 +27,7 @@ export class OrdersService {
     private subscriptions: SubscriptionsService,
     private discounts: DiscountsService,
     private portfolio: PortfolioService,
+    private invoicePdf: InvoicePdfService,
   ) {}
 
   private notDeleted(): Prisma.OrderWhereInput {
@@ -107,7 +110,7 @@ export class OrdersService {
     if (!customer) throw new NotFoundException('Customer not found');
 
     let discountId: string | undefined;
-    let discountAmount = 0;
+    let discountAmount = dto.discountAmount ?? 0;
     let totalAmount = subtotalAmount;
 
     if (dto.discountCode) {
@@ -122,6 +125,13 @@ export class OrdersService {
       discountId = validation.discountId;
       discountAmount = validation.discountAmount;
       totalAmount = validation.totalAmount;
+    } else if (discountAmount > 0) {
+      totalAmount = Math.max(0, subtotalAmount - discountAmount);
+    }
+
+    if (dto.subtotalAmount != null) {
+      subtotalAmount = dto.subtotalAmount;
+      totalAmount = Math.max(0, subtotalAmount - discountAmount);
     }
 
     const orderNumber = await this.generateOrderNumber(tenantId);
@@ -140,6 +150,9 @@ export class OrdersService {
           : undefined,
         priority: dto.priority,
         notes: dto.notes,
+        measurementId: dto.measurementId,
+        styleReferenceUrls: dto.styleReferenceUrls ?? [],
+        discountType: dto.discountType,
         subtotalAmount,
         discountId,
         discountAmount,
@@ -180,6 +193,32 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  async confirm(
+    tenantId: string,
+    dto: ConfirmOrderDto,
+    user?: JwtPayload,
+  ) {
+    const order = await this.create(tenantId, dto, user);
+
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: { confirmedAt: new Date() },
+    });
+
+    const invoiceResult = await this.invoicePdf.generateForOrder(
+      tenantId,
+      order.id,
+      user?.sub,
+    );
+
+    return {
+      ...order,
+      confirmedAt: new Date(),
+      invoice: invoiceResult?.invoice,
+      pdfUrl: invoiceResult?.pdfUrl,
+    };
   }
 
   async findAll(tenantId: string, query: OrderQueryDto, user?: JwtPayload) {

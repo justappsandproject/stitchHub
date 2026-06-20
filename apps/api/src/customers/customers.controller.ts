@@ -21,6 +21,7 @@ import { resolveTenantId } from '../common/utils/tenant-scope';
 import { CustomersService } from './customers.service';
 import {
   CreateCustomerDto,
+  OnboardCustomerDto,
   SearchCustomersDto,
   UpdateCustomerDto,
 } from './dto/customer.dto';
@@ -44,6 +45,13 @@ export class CustomersController {
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCustomerDto) {
     const tenantId = resolveTenantId(user);
     return this.customersService.create(tenantId, dto);
+  }
+
+  @Post('onboard')
+  @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
+  onboard(@CurrentUser() user: JwtPayload, @Body() dto: OnboardCustomerDto) {
+    const tenantId = resolveTenantId(user);
+    return this.customersService.onboard(tenantId, user.sub, dto);
   }
 
   @Get()

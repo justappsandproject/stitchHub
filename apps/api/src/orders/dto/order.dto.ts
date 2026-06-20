@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderPriority, OrderStatus } from '@prisma/client';
 import {
+  IsArray,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -57,6 +58,41 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   discountCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  subtotalAmount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
+
+  @ApiPropertyOptional({ enum: ['PERCENTAGE', 'FIXED_AMOUNT'] })
+  @IsOptional()
+  @IsString()
+  discountType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  measurementId?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  styleReferenceUrls?: string[];
+}
+
+export class ConfirmOrderDto extends CreateOrderDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  declare customerId: string;
 }
 
 export class UpdateOrderStatusDto {

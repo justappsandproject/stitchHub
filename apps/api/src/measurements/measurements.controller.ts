@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -17,8 +18,10 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
 import {
+  CreateBodyMeasurementDto,
   CreateMeasurementDto,
   CreateMeasurementTemplateDto,
+  MeasurementQueryDto,
   UpdateMeasurementDto,
 } from './dto/measurement.dto';
 import { MeasurementsService } from './measurements.service';
@@ -64,6 +67,38 @@ export class MeasurementsController {
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateMeasurementDto) {
     const tenantId = resolveTenantId(user);
     return this.measurementsService.create(tenantId, dto, user.sub);
+  }
+
+  @Post('body')
+  @Roles(
+    UserRole.TENANT_OWNER,
+    UserRole.MANAGER,
+    UserRole.TAILOR,
+    UserRole.CUTTER,
+  )
+  createBody(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateBodyMeasurementDto,
+  ) {
+    const tenantId = resolveTenantId(user);
+    return this.measurementsService.createBodyMeasurement(
+      tenantId,
+      dto,
+      user.sub,
+    );
+  }
+
+  @Get()
+  @Roles(
+    UserRole.TENANT_OWNER,
+    UserRole.MANAGER,
+    UserRole.TAILOR,
+    UserRole.CUTTER,
+    UserRole.FINISHER,
+    UserRole.APPRENTICE,
+  )
+  findAll(@CurrentUser() user: JwtPayload, @Query() query: MeasurementQueryDto) {
+    return this.measurementsService.findAll(resolveTenantId(user), query);
   }
 
   @Get('customer/:customerId')

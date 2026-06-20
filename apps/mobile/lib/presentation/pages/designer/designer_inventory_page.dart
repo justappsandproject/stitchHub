@@ -72,11 +72,11 @@ class _DesignerInventoryPageState extends State<DesignerInventoryPage> {
       case 1:
         context.go(AppRouter.designerOrders);
       case 2:
-        context.go(AppRouter.designerCustomers);
-      case 3:
         context.go(AppRouter.designerMessages);
+      case 3:
+        context.go(AppRouter.designerCustomers);
       case 4:
-        context.go(AppRouter.designerBilling);
+        context.go(AppRouter.designerMore);
     }
   }
 

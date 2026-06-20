@@ -69,6 +69,33 @@ export class CreateCustomerDto {
   tags?: string[];
 }
 
+export class OnboardCustomerDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  username?: string;
+}
+
 export class UpdateCustomerDto {
   @ApiPropertyOptional()
   @IsOptional()

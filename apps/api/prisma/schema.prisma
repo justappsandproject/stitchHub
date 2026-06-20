@@ -114,6 +114,24 @@ enum InventoryTransactionType {
   ADJUSTMENT
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum FinancialType {
+  INCOME
+  EXPENDITURE
+  PETTY_CASH
+}
+
+enum MessageSenderType {
+  STAFF
+  CUSTOMER
+}
+
 // ─── Platform ────────────────────────────────────────────────────────────────
 
 model Tenant {
@@ -144,6 +162,10 @@ model Tenant {
   portfolioItems       PortfolioItem[]
   discounts            Discount[]
   inventoryProducts    InventoryProduct[]
+  conversationMessages ConversationMessage[]
+  tickets              Ticket[]
+  financialEntries     FinancialEntry[]
+  customerStyleSelections CustomerStyleSelection[]
 
   @@map("tenants")
 }
@@ -206,8 +228,12 @@ model User {
   lastName     String    @map("last_name")
   phone        String?
   photoUrl     String?   @map("photo_url")
+  username     String?   @unique
+  pin          String?
   role         UserRole
   isActive     Boolean   @default(true) @map("is_active")
+  mustResetPassword Boolean @default(false) @map("must_reset_password")
+  invitedAt    DateTime? @map("invited_at")
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -220,6 +246,9 @@ model User {
   assignedOrders Order[]       @relation("AssignedWorker")
   auditLogs     AuditLog[]
   platformMessages PlatformMessage[]
+  measurementsTaken Measurement[] @relation("MeasurementTakenBy")
+  sentMessages  ConversationMessage[] @relation("MessageSender")
+  ticketReplies TicketReply[]
 
   @@index([tenantId])
   @@index([email])
@@ -293,6 +322,9 @@ model Customer {
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   measurements Measurement[]
   orders       Order[]
+  styleSelections CustomerStyleSelection[]
+  tickets      Ticket[]
+  conversationMessages ConversationMessage[]
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -327,15 +359,20 @@ model Measurement {
   templateId String   @map("template_id")
   version    Int      @default(1)
   values     Json
+  unit       String   @default("cm")
+  photoUrls  String[] @default([]) @map("photo_urls")
   notes      String?
   takenBy    String?  @map("taken_by")
+  takenById  String?  @map("taken_by_id")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
   template MeasurementTemplate @relation(fields: [templateId], references: [id])
+  takenByUser User?            @relation("MeasurementTakenBy", fields: [takenById], references: [id], onDelete: SetNull)
   revisions MeasurementRevision[]
+  orders    Order[]
 
   @@index([tenantId])
   @@index([customerId])
@@ -374,6 +411,7 @@ model Style {
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders Order[]
+  customerStyleSelections CustomerStyleSelection[]
 
   @@index([tenantId])
   @@map("styles")
@@ -454,6 +492,10 @@ model Order {
   totalAmount     Decimal       @default(0) @map("total_amount") @db.Decimal(12, 2)
   depositAmount   Decimal       @default(0) @map("deposit_amount") @db.Decimal(12, 2)
   balanceAmount   Decimal       @default(0) @map("balance_amount") @db.Decimal(12, 2)
+  measurementId   String?       @map("measurement_id")
+  styleReferenceUrls String[]   @default([]) @map("style_reference_urls")
+  discountType    String?       @map("discount_type")
+  confirmedAt     DateTime?     @map("confirmed_at")
   deletedAt       DateTime?     @map("deleted_at")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
@@ -463,6 +505,7 @@ model Order {
   style        Style?              @relation(fields: [styleId], references: [id])
   discount     Discount?           @relation(fields: [discountId], references: [id], onDelete: SetNull)
   assignedTo   User?               @relation("AssignedWorker", fields: [assignedToId], references: [id])
+  measurement  Measurement?        @relation(fields: [measurementId], references: [id], onDelete: SetNull)
   statusHistory OrderStatusHistory[]
   invoices     Invoice[]
   portfolioItem PortfolioItem?
@@ -500,6 +543,8 @@ model Invoice {
   paidAmount    Decimal       @default(0) @map("paid_amount") @db.Decimal(12, 2)
   status        InvoiceStatus @default(DRAFT)
   dueDate       DateTime?     @map("due_date")
+  pdfUrl        String?       @map("pdf_url")
+  sentAt        DateTime?     @map("sent_at")
   notes         String?
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
@@ -508,6 +553,7 @@ model Invoice {
   order    Order     @relation(fields: [orderId], references: [id])
   payments Payment[]
 
+  @@unique([orderId])
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId])
   @@map("invoices")
@@ -557,8 +603,10 @@ model AuditLog {
   id         String   @id @default(cuid())
   tenantId   String?  @map("tenant_id")
   userId     String?  @map("user_id")
+  actorType  String?  @map("actor_type")
   action     String
   entity     String
+  entityType String?  @map("entity_type")
   entityId   String?  @map("entity_id")
   metadata   Json?
   ipAddress  String?  @map("ip_address")
@@ -619,4 +667,110 @@ model InventoryTransaction {
   @@index([tenantId])
   @@index([productId])
   @@map("inventory_transactions")
+}
+
+// ─── Customer Style Selections ────────────────────────────────────────────────
+
+model CustomerStyleSelection {
+  id         String   @id @default(cuid())
+  tenantId   String   @map("tenant_id")
+  customerId String   @map("customer_id")
+  styleId    String?  @map("style_id")
+  photoUrl   String?  @map("photo_url")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  style    Style?   @relation(fields: [styleId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("customer_style_selections")
+}
+
+// ─── Tenant ↔ Customer Messaging ─────────────────────────────────────────────
+
+model ConversationMessage {
+  id           String            @id @default(cuid())
+  tenantId     String            @map("tenant_id")
+  customerId   String            @map("customer_id")
+  senderId     String            @map("sender_id")
+  senderType   MessageSenderType @map("sender_type")
+  content      String?
+  attachments  String[]          @default([])
+  read         Boolean           @default(false)
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sender   User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, customerId, createdAt])
+  @@index([tenantId, read])
+  @@map("conversation_messages")
+}
+
+// ─── Support Tickets ─────────────────────────────────────────────────────────
+
+model Ticket {
+  id          String       @id @default(cuid())
+  tenantId    String       @map("tenant_id")
+  customerId  String       @map("customer_id")
+  subject     String
+  category    String
+  description String
+  status      TicketStatus @default(OPEN)
+  attachments String[]     @default([])
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  replies  TicketReply[]
+
+  @@index([tenantId])
+  @@index([tenantId, customerId])
+  @@index([tenantId, status])
+  @@map("tickets")
+}
+
+model TicketReply {
+  id         String   @id @default(cuid())
+  ticketId   String   @map("ticket_id")
+  authorId   String   @map("author_id")
+  authorType MessageSenderType @map("author_type")
+  content    String
+  isInternal Boolean  @default(false) @map("is_internal")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("ticket_replies")
+}
+
+// ─── Financials ──────────────────────────────────────────────────────────────
+
+model FinancialEntry {
+  id          String        @id @default(cuid())
+  tenantId    String        @map("tenant_id")
+  type        FinancialType
+  direction   String?
+  category    String
+  description String
+  amount      Decimal       @db.Decimal(12, 2)
+  receiptUrl  String?       @map("receipt_url")
+  orderId     String?       @map("order_id")
+  recordedBy  String        @map("recorded_by")
+  entryDate   DateTime      @map("entry_date")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@index([tenantId, entryDate])
+  @@map("financial_entries")
 }

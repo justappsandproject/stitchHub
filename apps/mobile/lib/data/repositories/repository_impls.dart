@@ -871,6 +871,12 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
   }
 
   @override
+  Future<MeasurementEntity> createBodyMeasurement(Map<String, dynamic> data) async {
+    final json = await _apiClient.post('/measurements/body', data: data);
+    return MeasurementModel.fromJson(json);
+  }
+
+  @override
   Future<MeasurementEntity> updateMeasurement(
     String id,
     Map<String, dynamic> data,

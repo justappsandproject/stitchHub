@@ -173,3 +173,5 @@ export const STAFF_ROLES: UserRole[] = [
 ];
 
 export const TENANT_ROLES: UserRole[] = [...STAFF_ROLES, UserRole.CUSTOMER];
+
+export * from './permissions';

@@ -31,6 +31,7 @@ abstract class MeasurementsRepository {
   Future<List<MeasurementEntity>> getByCustomer(String customerId);
   Future<List<MeasurementEntity>> getMine();
   Future<MeasurementEntity> createMeasurement(Map<String, dynamic> data);
+  Future<MeasurementEntity> createBodyMeasurement(Map<String, dynamic> data);
   Future<MeasurementEntity> updateMeasurement(String id, Map<String, dynamic> data);
 }
 

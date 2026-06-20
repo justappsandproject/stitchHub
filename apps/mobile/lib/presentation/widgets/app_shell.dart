@@ -59,11 +59,6 @@ class DesignerShell extends StatelessWidget {
             selectedIcon: Icon(Icons.shopping_bag),
             label: 'Orders',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Clients',
-          ),
           NavigationDestination(
             icon: Badge(
               isLabelVisible: unreadMessages > 0,
@@ -74,9 +69,14 @@ class DesignerShell extends StatelessWidget {
             label: 'Messages',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.payments_outlined),
-            selectedIcon: Icon(Icons.payments),
-            label: 'Billing',
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'Customers',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.menu),
+            selectedIcon: Icon(Icons.menu_open),
+            label: 'More',
           ),
         ],
       ),

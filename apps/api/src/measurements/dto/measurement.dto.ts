@@ -3,6 +3,7 @@ import { MeasurementCategory } from '@prisma/client';
 import {
   IsArray,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsObject,
   IsOptional,
@@ -41,6 +42,60 @@ export class CreateMeasurementDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ enum: ['cm', 'inches'] })
+  @IsOptional()
+  @IsIn(['cm', 'inches'])
+  unit?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  photoUrls?: string[];
+}
+
+export class CreateBodyMeasurementDto {
+  @ApiProperty()
+  @IsString()
+  customerId: string;
+
+  @ApiProperty({ type: Object, additionalProperties: true })
+  @IsObject()
+  values: Record<string, number | string>;
+
+  @ApiPropertyOptional({ enum: ['cm', 'inches'] })
+  @IsOptional()
+  @IsIn(['cm', 'inches'])
+  unit?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  photoUrls?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class MeasurementQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  from?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  to?: string;
 }
 
 export class UpdateMeasurementDto {

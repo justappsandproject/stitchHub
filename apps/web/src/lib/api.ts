@@ -506,6 +506,144 @@ export const customersApi = {
   get: (id: string) => api<CustomerDetail>(`/customers/${id}`),
   delete: (id: string) =>
     api<{ message: string }>(`/customers/${id}`, { method: 'DELETE' }),
+  onboard: (data: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email?: string;
+    username?: string;
+  }) =>
+    api<{
+      customer: CustomerRecord;
+      username: string;
+      temporaryPassword: string;
+      welcomeMessage: string;
+    }>('/customers/onboard', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const measurementsApi = {
+  list: (params?: { customerId?: string; from?: string; to?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.customerId) search.set('customerId', params.customerId);
+    if (params?.from) search.set('from', params.from);
+    if (params?.to) search.set('to', params.to);
+    const qs = search.toString();
+    return api<
+      Array<{
+        id: string;
+        values: Record<string, number>;
+        unit: string;
+        notes?: string | null;
+        photoUrls: string[];
+        createdAt: string;
+        customer: { id: string; firstName: string; lastName: string; phone: string };
+        template?: { name: string };
+        takenByUser?: { firstName: string; lastName: string };
+      }>
+    >(`/measurements${qs ? `?${qs}` : ''}`);
+  },
+  createBody: (data: {
+    customerId: string;
+    values: Record<string, number>;
+    unit?: string;
+    notes?: string;
+    photoUrls?: string[];
+  }) =>
+    api('/measurements/body', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const conversationsApi = {
+  inbox: () =>
+    api<
+      Array<{
+        customer: CustomerRecord;
+        lastMessage: { content?: string | null; createdAt: string };
+        unreadCount: number;
+      }>
+    >('/conversations/inbox'),
+  thread: (customerId: string) =>
+    api<
+      Array<{
+        id: string;
+        content?: string | null;
+        attachments: string[];
+        createdAt: string;
+        senderType: string;
+        sender: { firstName: string; lastName: string };
+      }>
+    >(`/conversations/${customerId}`),
+  send: (data: { customerId: string; content?: string; attachments?: string[] }) =>
+    api('/conversations', { method: 'POST', body: JSON.stringify(data) }),
+  unreadCount: () => api<{ count: number }>('/conversations/unread-count'),
+};
+
+export const ticketsApi = {
+  list: (customerId?: string) =>
+    api(`/tickets${customerId ? `?customerId=${customerId}` : ''}`),
+  get: (id: string) => api(`/tickets/${id}`),
+  updateStatus: (id: string, status: string) =>
+    api(`/tickets/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  reply: (id: string, content: string, isInternal?: boolean) =>
+    api(`/tickets/${id}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ content, isInternal }),
+    }),
+};
+
+export const financialsApi = {
+  list: (params?: { type?: string; from?: string; to?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.type) search.set('type', params.type);
+    if (params?.from) search.set('from', params.from);
+    if (params?.to) search.set('to', params.to);
+    const qs = search.toString();
+    return api(`/financials${qs ? `?${qs}` : ''}`);
+  },
+  summary: () =>
+    api<{
+      incomeMonth: number;
+      expenditureMonth: number;
+      netMonth: number;
+      incomeYear: number;
+      expenditureYear: number;
+      netYear: number;
+      pettyCashBalance: number;
+      monthlyTrend: Array<{ month: string; income: number; expenditure: number }>;
+    }>('/financials/summary'),
+  create: (data: {
+    type: string;
+    direction?: string;
+    category: string;
+    description: string;
+    amount: number;
+    receiptUrl?: string;
+    orderId?: string;
+    entryDate: string;
+  }) =>
+    api('/financials', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+export const staffApi = {
+  list: () => api('/staff'),
+  create: (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    role: string;
+    pin?: string;
+  }) => api('/staff', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Record<string, unknown>) =>
+    api(`/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 export const stylesApi = {
@@ -702,6 +840,7 @@ export const paymentsApi = {
 
 export const ordersApi = {
   list: () => api<OrderRecord[]>('/orders'),
+  get: (id: string) => api(`/orders/${id}`),
   create: (data: {
     customerId?: string;
     styleId?: string;
@@ -710,10 +849,31 @@ export const ordersApi = {
     priority?: string;
     notes?: string;
     totalAmount?: number;
+    subtotalAmount?: number;
     depositAmount?: number;
+    discountAmount?: number;
+    discountType?: string;
     discountCode?: string;
+    measurementId?: string;
+    styleReferenceUrls?: string[];
   }) =>
     api('/orders', { method: 'POST', body: JSON.stringify(data) }),
+  confirm: (data: {
+    customerId: string;
+    styleId?: string;
+    fabric?: string;
+    deliveryDate?: string;
+    priority?: string;
+    notes?: string;
+    totalAmount?: number;
+    subtotalAmount?: number;
+    depositAmount?: number;
+    discountAmount?: number;
+    discountType?: string;
+    measurementId?: string;
+    styleReferenceUrls?: string[];
+  }) =>
+    api('/orders/confirm', { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: string) =>
     api<{ message: string }>(`/orders/${id}`, { method: 'DELETE' }),
 };
