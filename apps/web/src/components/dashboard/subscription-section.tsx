@@ -241,8 +241,10 @@ export function SubscriptionSection() {
 
       <div>
         <h3 className="mb-4 font-display text-xl font-semibold">Plans</h3>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {plans.map((plan) => {
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {plans
+            .filter((plan) => plan.plan !== 'FREE')
+            .map((plan) => {
             const isCurrent = current?.plan === plan.plan;
             const isPopular = plan.plan === 'PROFESSIONAL';
             return (

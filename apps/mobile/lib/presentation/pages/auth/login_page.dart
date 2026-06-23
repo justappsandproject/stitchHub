@@ -59,8 +59,8 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 32),
                 TextField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.text,
+                  decoration: const InputDecoration(labelText: 'Email or username'),
                 ),
                 const SizedBox(height: 16),
                 PasswordTextField(controller: _passwordController),

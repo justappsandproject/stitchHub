@@ -115,6 +115,7 @@ type HouseSeed = {
 };
 
 const FASHION_HOUSES: Record<SubscriptionPlan, HouseSeed[]> = {
+  FREE: [],
   STARTER: [
     {
       name: 'Thread & Needle Atelier',

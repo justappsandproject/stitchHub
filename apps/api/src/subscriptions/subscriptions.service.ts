@@ -2,6 +2,10 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Subscription, SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
 import { PLAN_CONFIG } from '@stitchhub/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  PlanLimitReachedException,
+  planLimitMessage,
+} from './plan-limit.exception';
 
 const TRIAL_DAYS = 14;
 
@@ -17,19 +21,37 @@ export class SubscriptionSuspendedException extends ForbiddenException {
   }
 }
 
-type GatedFeature = 'staffManagement' | 'analytics' | 'multiBranch';
+type GatedFeature =
+  | 'staffManagement'
+  | 'styleStore'
+  | 'messaging'
+  | 'financialReports'
+  | 'analytics'
+  | 'multiBranch';
 
 const FEATURE_LABELS: Record<GatedFeature, string> = {
   staffManagement: 'Staff management',
+  styleStore: 'Style Store',
+  messaging: 'Real-time messaging',
+  financialReports: 'Financial reports',
   analytics: 'Business analytics',
   multiBranch: 'Multi-branch support',
+};
+
+const FEATURE_RESOURCE: Record<GatedFeature, import('./plan-limit.exception').PlanResource> = {
+  staffManagement: 'staff',
+  styleStore: 'styleStore',
+  messaging: 'messaging',
+  financialReports: 'financialReports',
+  analytics: 'financialReports',
+  multiBranch: 'staff',
 };
 
 @Injectable()
 export class SubscriptionsService {
   constructor(private prisma: PrismaService) {}
 
-  /** Tenants created before subscriptions existed get a Starter trial. */
+  /** New tenants start on the Free plan. */
   async getOrCreate(tenantId: string): Promise<Subscription> {
     const existing = await this.prisma.subscription.findUnique({
       where: { tenantId },
@@ -37,10 +59,15 @@ export class SubscriptionsService {
     if (existing) return existing;
 
     const periodEnd = new Date();
-    periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
+    periodEnd.setFullYear(periodEnd.getFullYear() + 10);
 
     return this.prisma.subscription.create({
-      data: { tenantId, currentPeriodEnd: periodEnd },
+      data: {
+        tenantId,
+        plan: SubscriptionPlan.FREE,
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodEnd: periodEnd,
+      },
     });
   }
 
@@ -57,6 +84,7 @@ export class SubscriptionsService {
     const now = new Date();
 
     if (
+      subscription.plan !== SubscriptionPlan.FREE &&
       subscription.status === SubscriptionStatus.TRIALING &&
       subscription.currentPeriodEnd < now
     ) {
@@ -191,8 +219,9 @@ export class SubscriptionsService {
 
     const count = await this.prisma.customer.count({ where: { tenantId } });
     if (count >= config.maxCustomers) {
-      throw new ForbiddenException(
-        `The ${config.name} plan is limited to ${config.maxCustomers} customers. Upgrade your plan to add more.`,
+      throw new PlanLimitReachedException(
+        'customers',
+        planLimitMessage(subscription.plan, 'customers', config.maxCustomers),
       );
     }
   }
@@ -211,8 +240,13 @@ export class SubscriptionsService {
       where: { tenantId, createdAt: { gte: startOfMonth } },
     });
     if (count >= config.maxOrdersPerMonth) {
-      throw new ForbiddenException(
-        `The ${config.name} plan is limited to ${config.maxOrdersPerMonth} orders per month. Upgrade your plan to create more.`,
+      throw new PlanLimitReachedException(
+        'orders',
+        planLimitMessage(
+          subscription.plan,
+          'orders',
+          config.maxOrdersPerMonth,
+        ),
       );
     }
   }
@@ -222,8 +256,9 @@ export class SubscriptionsService {
     const subscription = await this.getOrCreate(tenantId);
     const config = PLAN_CONFIG[subscription.plan];
     if (!config[feature]) {
-      throw new ForbiddenException(
-        `${FEATURE_LABELS[feature]} requires the Enterprise plan. Upgrade to unlock it.`,
+      throw new PlanLimitReachedException(
+        FEATURE_RESOURCE[feature],
+        planLimitMessage(subscription.plan, FEATURE_RESOURCE[feature]),
       );
     }
   }

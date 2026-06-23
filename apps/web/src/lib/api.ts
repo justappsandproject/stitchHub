@@ -27,7 +27,17 @@ export interface ApiError {
   message: string;
   statusCode: number;
   code?: string;
+  resource?: PlanResource;
+  upgradeRequired?: boolean;
 }
+
+export type PlanResource =
+  | 'customers'
+  | 'orders'
+  | 'staff'
+  | 'styleStore'
+  | 'messaging'
+  | 'financialReports';
 
 function clearSessionStorage() {
   if (typeof window === 'undefined') return;
@@ -447,6 +457,8 @@ export interface StyleRecord {
   photoUrls: string[];
   videoUrls: string[];
   basePrice?: number | string | null;
+  stockQuantity?: number;
+  tags?: string[];
   isActive: boolean;
   createdAt: string;
 }
@@ -475,6 +487,7 @@ export interface CustomerDetail extends CustomerRecord {
     orderNumber: string;
     status: string;
     totalAmount: number;
+    createdAt: string;
     style?: { id: string; name: string; category: string } | null;
   }>;
   _count: { orders: number; measurements: number };
@@ -504,6 +517,22 @@ export const customersApi = {
       `/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`,
     ),
   get: (id: string) => api<CustomerDetail>(`/customers/${id}`),
+  create: (data: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email?: string;
+    gender?: string;
+    address?: string;
+    notes?: string;
+    isVip?: boolean;
+    photoUrl?: string;
+    tags?: string[];
+  }) =>
+    api<CustomerRecord & { credentials: { username: string; password: string } }>(
+      '/customers',
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
   delete: (id: string) =>
     api<{ message: string }>(`/customers/${id}`, { method: 'DELETE' }),
   onboard: (data: {
@@ -514,7 +543,9 @@ export const customersApi = {
     username?: string;
   }) =>
     api<{
-      customer: CustomerRecord;
+      customer: CustomerRecord & {
+        credentials: { username: string; password: string };
+      };
       username: string;
       temporaryPassword: string;
       welcomeMessage: string;
@@ -633,7 +664,7 @@ export const financialsApi = {
 };
 
 export const staffApi = {
-  list: () => api('/staff'),
+  list: () => api<Array<Record<string, unknown>>>('/staff'),
   create: (data: {
     firstName: string;
     lastName: string;
@@ -647,10 +678,11 @@ export const staffApi = {
 };
 
 export const stylesApi = {
-  list: (params?: { q?: string; category?: string }) => {
+  list: (params?: { q?: string; category?: string; sort?: string }) => {
     const search = new URLSearchParams();
     if (params?.q) search.set('q', params.q);
     if (params?.category) search.set('category', params.category);
+    if (params?.sort) search.set('sort', params.sort);
     const qs = search.toString();
     return api<StyleRecord[]>(`/styles${qs ? `?${qs}` : ''}`);
   },

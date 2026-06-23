@@ -307,13 +307,12 @@ class CustomersRepositoryImpl implements CustomersRepository {
   }
 
   @override
-  Future<CustomerEntity> createCustomer(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> createCustomer(Map<String, dynamic> data) async {
     if (!await _networkInfo.isConnected) {
       await _syncQueue.enqueue(SyncActions.createCustomer, data);
       throw NetworkException('Customer queued for sync when online');
     }
-    final json = await _apiClient.post('/customers', data: data);
-    return CustomerModel.fromJson(json);
+    return _apiClient.post('/customers', data: data);
   }
 
   @override

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stitchhub_mobile/core/constants/enums.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/subscription/plan_gate.dart';
 import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
@@ -20,30 +24,30 @@ class DesignerHomePage extends StatefulWidget {
 
 class _DesignerHomePageState extends State<DesignerHomePage> {
   int _unread = 0;
+  bool _showWelcome = false;
 
   @override
   void initState() {
     super.initState();
-    sl<DashboardBloc>().add(const DashboardLoadRequested());
-    sl<MessagesBloc>().add(const UnreadCountRequested());
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      sl<DashboardBloc>().add(const DashboardLoadRequested());
+      sl<MessagesBloc>().add(const UnreadCountRequested());
+      _maybeShowWelcome();
+    });
   }
 
-  void _navigate(int index) {
-    switch (index) {
-      case 0:
-        context.go(AppRouter.designerHome);
-      case 1:
-        context.go(AppRouter.designerOrders);
-      case 2:
-        context.go(AppRouter.designerMessages);
-      case 3:
-        context.go(AppRouter.designerCustomers);
-      case 4:
-        context.go(AppRouter.designerMore);
-      case 5:
-        context.go(AppRouter.settings);
+  Future<void> _maybeShowWelcome() async {
+    final prefs = sl<SharedPreferences>();
+    if (prefs.getBool('welcome_free_shown') == true) return;
+    final sub = await loadCurrentSubscription();
+    if (!mounted) return;
+    if (sub?.plan == SubscriptionPlan.free) {
+      setState(() => _showWelcome = true);
+      await prefs.setBool('welcome_free_shown', true);
     }
   }
+
+  void _navigate(int index) => navigateDesignerShell(context, index);
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +90,11 @@ class _DesignerHomePageState extends State<DesignerHomePage> {
                   sl<MessagesBloc>().add(const UnreadCountRequested());
                   await Future<void>.delayed(const Duration(milliseconds: 400));
                 },
-                child: _DashboardBody(summary: state.summary),
+                child: _DashboardBody(
+                  summary: state.summary,
+                  showWelcome: _showWelcome,
+                  onDismissWelcome: () => setState(() => _showWelcome = false),
+                ),
               );
             }
             return const Center(child: CircularProgressIndicator());
@@ -98,9 +106,15 @@ class _DesignerHomePageState extends State<DesignerHomePage> {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.summary});
+  const _DashboardBody({
+    required this.summary,
+    this.showWelcome = false,
+    this.onDismissWelcome,
+  });
 
   final DashboardSummary summary;
+  final bool showWelcome;
+  final VoidCallback? onDismissWelcome;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +124,46 @@ class _DashboardBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (showWelcome)
+          Card(
+            color: AppTheme.accentLight,
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Welcome to StitchHub',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "You're on the Free plan — up to 5 customers and 10 orders per month. Upgrade anytime.",
+                    style: TextStyle(color: AppTheme.navy, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => context.push(AppRouter.planDetail),
+                        child: const Text('Upgrade'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: onDismissWelcome,
+                        child: const Text('Get Started'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         Text(
           'Good morning, $name',
           style: Theme.of(context).textTheme.headlineMedium,

@@ -99,10 +99,10 @@ function LoginForm() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email or username</Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
                 placeholder="owner@atelier.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

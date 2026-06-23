@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/constants/enums.dart';
-import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/subscription/plan_gate.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 import 'package:stitchhub_mobile/presentation/blocs/messages/messages_bloc.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
@@ -23,20 +22,7 @@ class _MessagesPageState extends State<MessagesPage> {
     sl<MessagesBloc>().add(const MessagesLoadRequested());
   }
 
-  void _navigate(int index) {
-    switch (index) {
-      case 0:
-        context.go(AppRouter.designerHome);
-      case 1:
-        context.go(AppRouter.designerOrders);
-      case 2:
-        context.go(AppRouter.designerMessages);
-      case 3:
-        context.go(AppRouter.designerCustomers);
-      case 4:
-        context.go(AppRouter.designerMore);
-    }
-  }
+  void _navigate(int index) => navigateDesignerShell(context, index);
 
   @override
   Widget build(BuildContext context) {

@@ -8,6 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
   CreateFinancialEntryDto,
   FinancialQueryDto,
@@ -19,27 +20,39 @@ import { FinancialsService } from './financials.service';
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 @ApiBearerAuth()
 export class FinancialsController {
-  constructor(private financialsService: FinancialsService) {}
+  constructor(
+    private financialsService: FinancialsService,
+    private subscriptions: SubscriptionsService,
+  ) {}
+
+  private assertReports(tenantId: string) {
+    return this.subscriptions.assertFeature(tenantId, 'financialReports');
+  }
 
   @Get()
   @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
   findAll(@CurrentUser() user: JwtPayload, @Query() query: FinancialQueryDto) {
-    return this.financialsService.findAll(resolveTenantId(user), query);
+    const tenantId = resolveTenantId(user);
+    return this.assertReports(tenantId).then(() =>
+      this.financialsService.findAll(tenantId, query),
+    );
   }
 
   @Get('summary')
   @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
   summary(@CurrentUser() user: JwtPayload) {
-    return this.financialsService.getSummary(resolveTenantId(user));
+    const tenantId = resolveTenantId(user);
+    return this.assertReports(tenantId).then(() =>
+      this.financialsService.getSummary(tenantId),
+    );
   }
 
   @Post()
   @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateFinancialEntryDto) {
-    return this.financialsService.create(
-      resolveTenantId(user),
-      user.sub,
-      dto,
+    const tenantId = resolveTenantId(user);
+    return this.assertReports(tenantId).then(() =>
+      this.financialsService.create(tenantId, user.sub, dto),
     );
   }
 }

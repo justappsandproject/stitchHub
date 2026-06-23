@@ -79,6 +79,7 @@ enum OrderPriority {
 }
 
 enum SubscriptionPlan {
+  FREE
   STARTER
   PROFESSIONAL
   ENTERPRISE
@@ -205,7 +206,7 @@ model SubscriptionPayment {
 model Subscription {
   id                 String             @id @default(cuid())
   tenantId           String             @unique @map("tenant_id")
-  plan               SubscriptionPlan   @default(STARTER)
+  plan               SubscriptionPlan   @default(FREE)
   status             SubscriptionStatus @default(TRIALING)
   currentPeriodStart DateTime           @default(now()) @map("current_period_start")
   currentPeriodEnd   DateTime           @map("current_period_end")
@@ -303,6 +304,7 @@ model Customer {
   id          String    @id @default(cuid())
   tenantId    String    @map("tenant_id")
   userId      String?   @unique @map("user_id")
+  username    String?   @map("username")
   firstName   String    @map("first_name")
   lastName    String    @map("last_name")
   phone       String
@@ -405,6 +407,8 @@ model Style {
   photoUrls   String[] @default([]) @map("photo_urls")
   videoUrls   String[] @default([]) @map("video_urls")
   basePrice   Decimal? @map("base_price") @db.Decimal(12, 2)
+  stockQuantity Int    @default(0) @map("stock_quantity")
+  tags        String[] @default([])
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

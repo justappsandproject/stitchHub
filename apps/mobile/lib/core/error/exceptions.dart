@@ -11,6 +11,7 @@ class ApiException implements Exception {
 
   bool get isSessionExpired => code == 'SESSION_EXPIRED';
   bool get isSubscriptionSuspended => code == 'SUBSCRIPTION_SUSPENDED';
+  bool get isPlanLimitReached => code == 'PLAN_LIMIT_REACHED';
 }
 
 class NetworkException implements Exception {

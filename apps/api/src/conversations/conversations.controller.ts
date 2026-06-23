@@ -8,6 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ConversationsService } from './conversations.service';
 import { SendMessageDto } from './dto/conversation.dto';
 
@@ -16,7 +17,14 @@ import { SendMessageDto } from './dto/conversation.dto';
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 @ApiBearerAuth()
 export class ConversationsController {
-  constructor(private conversationsService: ConversationsService) {}
+  constructor(
+    private conversationsService: ConversationsService,
+    private subscriptions: SubscriptionsService,
+  ) {}
+
+  private async assertMessaging(tenantId: string) {
+    await this.subscriptions.assertFeature(tenantId, 'messaging');
+  }
 
   @Get('inbox')
   @Roles(
@@ -28,7 +36,10 @@ export class ConversationsController {
     UserRole.APPRENTICE,
   )
   inbox(@CurrentUser() user: JwtPayload) {
-    return this.conversationsService.listInbox(resolveTenantId(user));
+    const tenantId = resolveTenantId(user);
+    return this.assertMessaging(tenantId).then(() =>
+      this.conversationsService.listInbox(tenantId),
+    );
   }
 
   @Get('unread-count')
@@ -42,7 +53,10 @@ export class ConversationsController {
     UserRole.CUSTOMER,
   )
   unreadCount(@CurrentUser() user: JwtPayload) {
-    return this.conversationsService.unreadCount(resolveTenantId(user), user);
+    const tenantId = resolveTenantId(user);
+    return this.assertMessaging(tenantId).then(() =>
+      this.conversationsService.unreadCount(tenantId, user),
+    );
   }
 
   @Get(':customerId')
@@ -56,10 +70,9 @@ export class ConversationsController {
     UserRole.CUSTOMER,
   )
   thread(@CurrentUser() user: JwtPayload, @Param('customerId') customerId: string) {
-    return this.conversationsService.getThread(
-      resolveTenantId(user),
-      customerId,
-      user,
+    const tenantId = resolveTenantId(user);
+    return this.assertMessaging(tenantId).then(() =>
+      this.conversationsService.getThread(tenantId, customerId, user),
     );
   }
 
@@ -74,6 +87,9 @@ export class ConversationsController {
     UserRole.CUSTOMER,
   )
   send(@CurrentUser() user: JwtPayload, @Body() dto: SendMessageDto) {
-    return this.conversationsService.send(resolveTenantId(user), user, dto);
+    const tenantId = resolveTenantId(user);
+    return this.assertMessaging(tenantId).then(() =>
+      this.conversationsService.send(tenantId, user, dto),
+    );
   }
 }

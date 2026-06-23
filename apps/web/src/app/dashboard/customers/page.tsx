@@ -2,8 +2,12 @@
 
 import { Plus, Search, Star } from 'lucide-react';
 import Link from 'next/link';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  CredentialsDialog,
+  type CustomerCredentials,
+} from '@/components/customers/credentials-dialog';
+import { UpgradePromptDialog } from '@/components/subscription/upgrade-prompt-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -24,7 +28,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { api, uploadFile } from '@/lib/api';
+import { customersApi, uploadFile, api } from '@/lib/api';
+import { isPlanLimitError } from '@/lib/plan-errors';
+import type { PlanResource } from '@/lib/api';
 
 interface Customer {
   id: string;
@@ -58,6 +64,13 @@ export default function CustomersPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [credentials, setCredentials] = useState<CustomerCredentials | null>(
+    null,
+  );
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState('');
+  const [upgradeResource, setUpgradeResource] = useState<PlanResource>();
 
   const loadCustomers = useCallback(async (q?: string) => {
     setLoading(true);
@@ -86,27 +99,36 @@ export default function CustomersPage() {
     setSaving(true);
 
     try {
-      await api('/customers', {
-        method: 'POST',
-        body: JSON.stringify({
-          firstName: form.firstName,
-          lastName: form.lastName,
-          phone: form.phone,
-          email: form.email || undefined,
-          gender: form.gender || undefined,
-          address: form.address || undefined,
-          notes: form.notes || undefined,
-          isVip: form.isVip,
-          photoUrl: form.photoUrl || undefined,
-          tags: form.tags
-            ? form.tags.split(',').map((t) => t.trim()).filter(Boolean)
-            : [],
-        }),
+      const result = await customersApi.create({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        phone: form.phone,
+        email: form.email || undefined,
+        gender: form.gender || undefined,
+        address: form.address || undefined,
+        notes: form.notes || undefined,
+        isVip: form.isVip,
+        photoUrl: form.photoUrl || undefined,
+        tags: form.tags
+          ? form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+          : [],
       });
       setDialogOpen(false);
       setForm(emptyForm);
+      setCredentials(result.credentials);
+      setCredentialsOpen(true);
       loadCustomers(search);
     } catch (err: unknown) {
+      if (isPlanLimitError(err)) {
+        setUpgradeMessage(
+          typeof err.message === 'string'
+            ? err.message
+            : "You've reached the customer limit on the Free plan.",
+        );
+        setUpgradeResource(err.resource ?? 'customers');
+        setUpgradeOpen(true);
+        return;
+      }
       const apiErr = err as { message?: string | string[] };
       setError(
         Array.isArray(apiErr.message)
@@ -337,6 +359,18 @@ export default function CustomersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <CredentialsDialog
+        open={credentialsOpen}
+        onOpenChange={setCredentialsOpen}
+        credentials={credentials}
+      />
+      <UpgradePromptDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        message={upgradeMessage}
+        resource={upgradeResource}
+      />
     </div>
   );
 }

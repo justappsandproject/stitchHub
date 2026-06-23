@@ -9,7 +9,7 @@ class AppTheme {
   static const accentLight = Color(0xFFF5EDD5);
   static const surface = Color(0xFFF8F6F2);
   static const card = Color(0xFFFFFFFF);
-  static const muted = Color(0xFF6B6B7A);
+  static const muted = Color(0xFF4A4A58);
   static const border = Color(0xFFE8E4DC);
   static const success = Color(0xFF2D7A4F);
   static const danger = Color(0xFFC0392B);
@@ -176,6 +176,7 @@ class AppTheme {
           borderSide: const BorderSide(color: accent, width: 2),
         ),
         labelStyle: GoogleFonts.inter(color: muted, fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: const Color(0xFF4A4A58), fontSize: 14),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: accent,

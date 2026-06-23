@@ -37,6 +37,7 @@ enum OrderStatus {
 }
 
 enum SubscriptionPlan {
+  free('FREE'),
   starter('STARTER'),
   professional('PROFESSIONAL'),
   enterprise('ENTERPRISE');
@@ -45,7 +46,7 @@ enum SubscriptionPlan {
   final String value;
 
   static SubscriptionPlan fromString(String value) => SubscriptionPlan.values
-      .firstWhere((p) => p.value == value, orElse: () => starter);
+      .firstWhere((p) => p.value == value, orElse: () => free);
 }
 
 enum PaymentMethod {

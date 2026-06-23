@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stitchhub_mobile/core/error/exceptions.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/subscription/plan_gate.dart';
 import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
@@ -73,7 +75,7 @@ class _CustomersPageState extends State<CustomersPage> {
   Future<void> _createCustomer() async {
     setState(() => _saving = true);
     try {
-      await sl<CustomersRepository>().createCustomer({
+      final result = await sl<CustomersRepository>().createCustomer({
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
         'phone': _phoneController.text.trim(),
@@ -88,11 +90,100 @@ class _CustomersPageState extends State<CustomersPage> {
       _emailController.clear();
       _photoUrl = null;
       await _loadCustomers(_searchController.text);
+      final credentials = result['credentials'] as Map<String, dynamic>?;
+      if (credentials != null) {
+        _showCredentialsSheet(
+          credentials['username'] as String? ?? '',
+          credentials['password'] as String? ?? '',
+        );
+      }
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (e.isPlanLimitReached) {
+        _showUpgradePrompt(e.message);
+      } else {
+        setState(() => _error = e.message);
+      }
     } finally {
       setState(() => _saving = false);
     }
+  }
+
+  void _showCredentialsSheet(String username, String password) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Customer Account Created',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.navy),
+            ),
+            const SizedBox(height: 16),
+            Text('Username: $username', style: const TextStyle(color: AppTheme.navy, fontSize: 15)),
+            const SizedBox(height: 8),
+            Text('Password: $password', style: const TextStyle(color: AppTheme.navy, fontSize: 15)),
+            const SizedBox(height: 12),
+            const Text(
+              'Share these details with your customer. This password will not be shown again.',
+              style: TextStyle(color: AppTheme.muted, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(text: 'Username: $username\nPassword: $password'),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Credentials copied')),
+                );
+              },
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: const Text('Copy Credentials'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUpgradePrompt(String message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Plan limit reached',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.navy),
+            ),
+            const SizedBox(height: 12),
+            Text(message, style: const TextStyle(color: AppTheme.navy)),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push('/settings');
+              },
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: const Text('Upgrade Plan'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showCreateDialog() {
@@ -106,41 +197,31 @@ class _CustomersPageState extends State<CustomersPage> {
           top: 16,
           bottom: MediaQuery.of(context).viewInsets.bottom + 16,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Add customer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextButton(onPressed: _pickPhoto, child: Text(_photoUrl == null ? 'Upload photo' : 'Photo selected')),
-            TextField(controller: _firstNameController, decoration: const InputDecoration(labelText: 'First name')),
-            TextField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Last name')),
-            TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone')),
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _saving ? null : _createCustomer,
-              child: Text(_saving ? 'Saving...' : 'Create customer'),
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Add customer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.navy)),
+              const SizedBox(height: 16),
+              TextButton(onPressed: _pickPhoto, child: Text(_photoUrl == null ? 'Upload photo' : 'Photo selected')),
+              TextField(controller: _firstNameController, decoration: const InputDecoration(labelText: 'First name')),
+              TextField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Last name')),
+              TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+              TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _saving ? null : _createCustomer,
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                child: Text(_saving ? 'Saving...' : 'Create customer'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _navigate(int index) {
-    switch (index) {
-      case 0:
-        context.go(AppRouter.designerHome);
-      case 1:
-        context.go(AppRouter.designerOrders);
-      case 2:
-        context.go(AppRouter.designerMessages);
-      case 3:
-        context.go(AppRouter.designerCustomers);
-      case 4:
-        context.go(AppRouter.designerMore);
-    }
-  }
+  void _navigate(int index) => navigateDesignerShell(context, index);
 
   @override
   Widget build(BuildContext context) {

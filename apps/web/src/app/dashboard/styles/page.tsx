@@ -1,7 +1,8 @@
 'use client';
 
 import { Edit, ImagePlus, Plus, Search, Trash2, Video } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { UpgradePromptDialog } from '@/components/subscription/upgrade-prompt-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -20,43 +21,92 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { stylesApi, uploadFile, type StyleRecord } from '@/lib/api';
+import { isPlanLimitError } from '@/lib/plan-errors';
+import type { PlanResource } from '@/lib/api';
 
 const emptyForm = {
   name: '',
   category: '',
   description: '',
   basePrice: '',
+  stockQuantity: '0',
+  tags: '',
   photoUrls: [] as string[],
   videoUrls: [] as string[],
 };
 
+function StylesSkeleton() {
+  return (
+    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} className="overflow-hidden">
+          <div className="aspect-[4/3] animate-pulse bg-secondary" />
+          <CardHeader>
+            <div className="h-5 w-32 animate-pulse rounded bg-secondary" />
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function StylesPage() {
   const [styles, setStyles] = useState<StyleRecord[]>([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [sort, setSort] = useState('date');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StyleRecord | null>(null);
   const [editStyle, setEditStyle] = useState<StyleRecord | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState('');
+  const [upgradeResource, setUpgradeResource] = useState<PlanResource>();
 
-  const loadStyles = useCallback(async (q?: string) => {
+  const categories = useMemo(
+    () => [...new Set(styles.map((s) => s.category).filter(Boolean))],
+    [styles],
+  );
+
+  const loadStyles = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await stylesApi.list(q ? { q } : undefined);
+      const data = await stylesApi.list({
+        q: search || undefined,
+        category: categoryFilter || undefined,
+        sort,
+      });
       setStyles(data);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setStyles([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [search, categoryFilter, sort]);
 
   useEffect(() => {
     loadStyles();
   }, [loadStyles]);
+
+  function handlePlanError(err: unknown) {
+    if (isPlanLimitError(err)) {
+      setUpgradeMessage(
+        typeof err.message === 'string'
+          ? err.message
+          : 'Style Store is not available on the Free plan.',
+      );
+      setUpgradeResource(err.resource ?? 'styleStore');
+      setUpgradeOpen(true);
+      return true;
+    }
+    return false;
+  }
 
   function openCreateDialog() {
     setEditStyle(null);
@@ -72,6 +122,8 @@ export default function StylesPage() {
       category: style.category,
       description: style.description ?? '',
       basePrice: style.basePrice != null ? String(style.basePrice) : '',
+      stockQuantity: String(style.stockQuantity ?? 0),
+      tags: (style.tags ?? []).join(', '),
       photoUrls: style.photoUrls ?? [],
       videoUrls: style.videoUrls ?? [],
     });
@@ -107,6 +159,10 @@ export default function StylesPage() {
         category: form.category,
         description: form.description || undefined,
         basePrice: form.basePrice ? Number(form.basePrice) : undefined,
+        stockQuantity: Number(form.stockQuantity) || 0,
+        tags: form.tags
+          ? form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+          : [],
         photoUrls: form.photoUrls,
         videoUrls: form.videoUrls,
       };
@@ -120,28 +176,39 @@ export default function StylesPage() {
       setDialogOpen(false);
       setForm(emptyForm);
       setEditStyle(null);
-      loadStyles(search);
+      loadStyles();
     } catch (err: unknown) {
-      const apiErr = err as { message?: string | string[] };
-      setError(
-        Array.isArray(apiErr.message)
-          ? apiErr.message.join(', ')
-          : apiErr.message ?? 'Failed to save style',
-      );
+      if (!handlePlanError(err)) {
+        const apiErr = err as { message?: string | string[] };
+        setError(
+          Array.isArray(apiErr.message)
+            ? apiErr.message.join(', ')
+            : apiErr.message ?? 'Failed to save style',
+        );
+      }
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleActive(style: StyleRecord) {
-    await stylesApi.update(style.id, { isActive: !style.isActive });
-    loadStyles(search);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await stylesApi.remove(deleteTarget.id);
+      setDeleteTarget(null);
+      loadStyles();
+    } catch (err: unknown) {
+      if (!handlePlanError(err)) {
+        const apiErr = err as { message?: string };
+        setError(apiErr.message ?? 'Failed to delete style');
+      }
+    }
   }
 
-  async function removeStyle(id: string) {
-    await stylesApi.remove(id);
-    loadStyles(search);
-  }
+  const formValid =
+    form.name.trim().length > 0 &&
+    form.category.trim().length > 0 &&
+    Number(form.stockQuantity) >= 0;
 
   return (
     <div className="space-y-8">
@@ -151,7 +218,7 @@ export default function StylesPage() {
             Style Store
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your lookbook — showcase designs with photos and videos
+            Manage your lookbook — showcase designs with photos and pricing
           </p>
         </div>
         <Button onClick={openCreateDialog}>
@@ -160,21 +227,41 @@ export default function StylesPage() {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Search styles..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            loadStyles(e.target.value);
-          }}
-        />
+      <div className="flex flex-wrap gap-3">
+        <div className="relative min-w-[200px] flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search styles..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-40"
+        >
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="w-36"
+        >
+          <option value="date">Newest</option>
+          <option value="price">Price</option>
+          <option value="name">Name</option>
+        </Select>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Loading styles...</p>
+        <StylesSkeleton />
       ) : styles.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -186,78 +273,86 @@ export default function StylesPage() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {styles.map((style) => (
-            <Card
-              key={style.id}
-              className={`overflow-hidden transition-shadow hover:shadow-lg ${!style.isActive ? 'opacity-60' : ''}`}
-            >
-              <div className="relative aspect-[4/3] bg-secondary">
-                {style.photoUrls[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={style.photoUrls[0]}
-                    alt={style.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground">
-                    <ImagePlus className="mr-2 h-5 w-5" />
-                    No photo
-                  </div>
-                )}
-                {style.videoUrls.length > 0 && (
-                  <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
-                    <Video className="h-3 w-3" />
-                    {style.videoUrls.length}
+          {styles.map((style) => {
+            const inStock = (style.stockQuantity ?? 0) > 0;
+            return (
+              <Card
+                key={style.id}
+                className={`overflow-hidden transition-shadow hover:shadow-lg ${!style.isActive ? 'opacity-60' : ''}`}
+              >
+                <div className="relative aspect-[4/3] bg-secondary">
+                  {style.photoUrls[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={style.photoUrls[0]}
+                      alt={style.name}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <ImagePlus className="mr-2 h-5 w-5" />
+                      No photo
+                    </div>
+                  )}
+                  <span
+                    className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      inStock
+                        ? 'bg-success/90 text-white'
+                        : 'bg-destructive/90 text-white'
+                    }`}
+                  >
+                    {inStock ? 'In stock' : 'Out of stock'}
                   </span>
-                )}
-              </div>
-              <CardHeader>
-                <CardTitle className="text-lg text-foreground">
-                  {style.name}
-                </CardTitle>
-                <CardDescription>{style.category}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {style.basePrice != null && (
-                  <p className="font-display text-xl font-semibold text-foreground">
-                    ₦{Number(style.basePrice).toLocaleString()}
-                  </p>
-                )}
-                {style.description && (
-                  <p className="line-clamp-2 text-sm text-muted-foreground">
-                    {style.description}
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => openEditDialog(style)}
-                  >
-                    <Edit className="mr-1 h-3 w-3" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => toggleActive(style)}
-                  >
-                    {style.isActive ? 'Hide' : 'Publish'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeStyle(style.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {style.videoUrls.length > 0 && (
+                    <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                      <Video className="h-3 w-3" />
+                      {style.videoUrls.length}
+                    </span>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <CardHeader>
+                  <CardTitle className="text-lg text-foreground">
+                    {style.name}
+                  </CardTitle>
+                  <CardDescription>{style.category}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {style.basePrice != null && (
+                    <p className="font-display text-xl font-semibold text-foreground">
+                      ₦{Number(style.basePrice).toLocaleString()}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Qty: {style.stockQuantity ?? 0}
+                  </p>
+                  {style.description && (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {style.description}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => openEditDialog(style)}
+                    >
+                      <Edit className="mr-1 h-3 w-3" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteTarget(style)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -266,9 +361,7 @@ export default function StylesPage() {
           <DialogHeader>
             <DialogTitle>{editStyle ? 'Edit Style' : 'Add Style'}</DialogTitle>
             <DialogDescription>
-              {editStyle
-                ? 'Update style details, photos, and pricing'
-                : 'Upload photos and videos customers can review before ordering'}
+              Upload photos, set pricing, and track stock for your designs
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -279,7 +372,7 @@ export default function StylesPage() {
             )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Style Name *</Label>
                 <Input
                   id="name"
                   value={form.name}
@@ -312,7 +405,7 @@ export default function StylesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="basePrice">Base price (₦)</Label>
+                <Label htmlFor="basePrice">Price (₦)</Label>
                 <Input
                   id="basePrice"
                   type="number"
@@ -321,6 +414,30 @@ export default function StylesPage() {
                   onChange={(e) =>
                     setForm((p) => ({ ...p, basePrice: e.target.value }))
                   }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="stockQuantity">Stock Quantity *</Label>
+                <Input
+                  id="stockQuantity"
+                  type="number"
+                  min="0"
+                  value={form.stockQuantity}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, stockQuantity: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="tags">Tags (optional, comma separated)</Label>
+                <Input
+                  id="tags"
+                  value={form.tags}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, tags: e.target.value }))
+                  }
+                  placeholder="wedding, casual"
                 />
               </div>
             </div>
@@ -346,20 +463,6 @@ export default function StylesPage() {
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label>Videos</Label>
-              <Input
-                type="file"
-                accept="video/mp4,video/webm,video/quicktime"
-                multiple
-                onChange={(e) => handleUpload(e.target.files, 'video')}
-              />
-              {form.videoUrls.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {form.videoUrls.length} video(s) uploaded
-                </p>
-              )}
-            </div>
             <DialogFooter>
               <Button
                 type="button"
@@ -368,13 +471,39 @@ export default function StylesPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !formValid}>
                 {saving ? 'Saving...' : editStyle ? 'Save changes' : 'Save Style'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. The style will be permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <UpgradePromptDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        message={upgradeMessage}
+        resource={upgradeResource}
+      />
     </div>
   );
 }

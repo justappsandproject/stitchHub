@@ -46,7 +46,7 @@ abstract class OrdersRepository {
 abstract class CustomersRepository {
   Future<List<CustomerEntity>> getCustomers({String? query});
   Future<Map<String, dynamic>> getCustomerDetail(String id);
-  Future<CustomerEntity> createCustomer(Map<String, dynamic> data);
+  Future<Map<String, dynamic>> createCustomer(Map<String, dynamic> data);
   Future<void> deleteCustomer(String id);
 }
 

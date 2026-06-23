@@ -344,6 +344,8 @@ class StyleModel extends StyleEntity {
     super.photoUrls,
     super.videoUrls,
     super.basePrice,
+    super.stockQuantity,
+    super.tags,
     super.isActive,
   });
 
@@ -359,6 +361,10 @@ class StyleModel extends StyleEntity {
             .map((e) => e.toString())
             .toList(),
         basePrice: parseDouble(json['basePrice']),
+        stockQuantity: json['stockQuantity'] as int? ?? 0,
+        tags: (json['tags'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
         isActive: json['isActive'] as bool? ?? true,
       );
 }

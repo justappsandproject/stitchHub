@@ -13,7 +13,7 @@
     --secondary: 43 55% 95%;
     --secondary-foreground: 240 28% 14%;
     --muted: 40 20% 96%;
-    --muted-foreground: 240 5% 45%;
+    --muted-foreground: 240 8% 32%;
     --accent: 43 55% 54%;
     --accent-foreground: 240 28% 14%;
     --destructive: 4 60% 46%;
@@ -32,7 +32,7 @@
 
     --sidebar: 260 32% 12%;
     --sidebar-foreground: 240 20% 96%;
-    --sidebar-muted: 260 12% 62%;
+    --sidebar-muted: 260 12% 72%;
     --sidebar-border: 260 24% 22%;
 
     --landing-gradient-from: 262 83% 58%;

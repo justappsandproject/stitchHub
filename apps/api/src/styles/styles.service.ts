@@ -28,8 +28,20 @@ export class StylesService {
 
     return this.prisma.style.findMany({
       where,
-      orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
+      orderBy: this.resolveSort(query.sort),
     });
+  }
+
+  private resolveSort(sort?: string): Prisma.StyleOrderByWithRelationInput[] {
+    switch (sort) {
+      case 'price':
+        return [{ basePrice: 'desc' }, { createdAt: 'desc' }];
+      case 'name':
+        return [{ name: 'asc' }];
+      case 'date':
+      default:
+        return [{ isActive: 'desc' }, { createdAt: 'desc' }];
+    }
   }
 
   async findOne(tenantId: string, id: string, activeOnly = false) {
@@ -54,6 +66,8 @@ export class StylesService {
         photoUrls: dto.photoUrls ?? [],
         videoUrls: dto.videoUrls ?? [],
         basePrice: dto.basePrice,
+        stockQuantity: dto.stockQuantity ?? 0,
+        tags: dto.tags ?? [],
         isActive: dto.isActive ?? true,
       },
     });
@@ -65,11 +79,9 @@ export class StylesService {
   }
 
   async remove(tenantId: string, id: string) {
-    await this.findOne(tenantId, id);
-    return this.prisma.style.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    const style = await this.findOne(tenantId, id);
+    await this.prisma.style.delete({ where: { id: style.id } });
+    return { message: 'Style deleted', id };
   }
 
   async tryOn(

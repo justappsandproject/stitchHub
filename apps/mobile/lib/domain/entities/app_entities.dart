@@ -337,6 +337,8 @@ class StyleEntity extends Equatable {
     this.photoUrls = const [],
     this.videoUrls = const [],
     this.basePrice,
+    this.stockQuantity = 0,
+    this.tags = const [],
     this.isActive = true,
   });
 
@@ -347,7 +349,11 @@ class StyleEntity extends Equatable {
   final List<String> photoUrls;
   final List<String> videoUrls;
   final double? basePrice;
+  final int stockQuantity;
+  final List<String> tags;
   final bool isActive;
+
+  bool get inStock => stockQuantity > 0;
 
   @override
   List<Object?> get props => [id, name];

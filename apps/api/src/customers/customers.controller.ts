@@ -44,7 +44,7 @@ export class CustomersController {
   @Post()
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCustomerDto) {
     const tenantId = resolveTenantId(user);
-    return this.customersService.create(tenantId, dto);
+    return this.customersService.create(tenantId, dto, user.sub);
   }
 
   @Post('onboard')

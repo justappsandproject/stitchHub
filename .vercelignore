@@ -1,0 +1,29 @@
+# Mobile app (not needed for web deploy)
+apps/mobile/**
+
+# API source (web talks to Render-hosted API)
+apps/api/**
+
+# Local build artifacts
+**/build/**
+**/.dart_tool/**
+**/.gradle/**
+**/ios/**
+**/android/**
+**/*.apk
+**/*.ipa
+**/*.xcarchive
+
+# Dependencies (installed on Vercel)
+node_modules/**
+.pnpm-store/**
+
+# Git & IDE
+.git/**
+.idea/**
+.vscode/**
+
+# Logs & caches
+**/*.log
+.turbo/**
+coverage/**

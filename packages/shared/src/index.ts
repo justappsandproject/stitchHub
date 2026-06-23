@@ -68,6 +68,7 @@ export const InvoiceStatus = {
 export type InvoiceStatus = (typeof InvoiceStatus)[keyof typeof InvoiceStatus];
 
 export const SubscriptionPlan = {
+  FREE: 'FREE',
   STARTER: 'STARTER',
   PROFESSIONAL: 'PROFESSIONAL',
   ENTERPRISE: 'ENTERPRISE',
@@ -93,12 +94,41 @@ export interface PlanConfig {
   /** null = unlimited */
   maxOrdersPerMonth: number | null;
   staffManagement: boolean;
+  styleStore: boolean;
+  messaging: boolean;
+  financialReports: boolean;
   analytics: boolean;
   multiBranch: boolean;
   features: string[];
+  lockedFeatures?: string[];
 }
 
 export const PLAN_CONFIG: Record<SubscriptionPlan, PlanConfig> = {
+  FREE: {
+    name: 'Free',
+    priceNgn: 0,
+    tagline: 'Start managing your atelier at no cost',
+    maxCustomers: 5,
+    maxOrdersPerMonth: 10,
+    staffManagement: false,
+    styleStore: false,
+    messaging: false,
+    financialReports: false,
+    analytics: false,
+    multiBranch: false,
+    features: [
+      'Up to 5 customers',
+      'Up to 10 orders per month',
+      'Digital measurement vault',
+      'Invoices & receipts',
+    ],
+    lockedFeatures: [
+      'Staff accounts',
+      'Style Store',
+      'Financial reports',
+      'Real-time messaging',
+    ],
+  },
   STARTER: {
     name: 'Starter',
     priceNgn: 5000,
@@ -106,6 +136,9 @@ export const PLAN_CONFIG: Record<SubscriptionPlan, PlanConfig> = {
     maxCustomers: 100,
     maxOrdersPerMonth: 50,
     staffManagement: false,
+    styleStore: true,
+    messaging: true,
+    financialReports: false,
     analytics: false,
     multiBranch: false,
     features: [
@@ -113,6 +146,8 @@ export const PLAN_CONFIG: Record<SubscriptionPlan, PlanConfig> = {
       'Up to 50 orders per month',
       'Digital measurement vault',
       'Invoices & receipts',
+      'Style Store',
+      'Messaging',
     ],
   },
   PROFESSIONAL: {
@@ -122,6 +157,9 @@ export const PLAN_CONFIG: Record<SubscriptionPlan, PlanConfig> = {
     maxCustomers: null,
     maxOrdersPerMonth: null,
     staffManagement: false,
+    styleStore: true,
+    messaging: true,
+    financialReports: true,
     analytics: false,
     multiBranch: false,
     features: [
@@ -129,6 +167,8 @@ export const PLAN_CONFIG: Record<SubscriptionPlan, PlanConfig> = {
       'Unlimited orders',
       'Unlimited measurements',
       'Production kanban board',
+      'Style Store & messaging',
+      'Financial reports',
       'Priority support',
     ],
   },
@@ -139,6 +179,9 @@ export const PLAN_CONFIG: Record<SubscriptionPlan, PlanConfig> = {
     maxCustomers: null,
     maxOrdersPerMonth: null,
     staffManagement: true,
+    styleStore: true,
+    messaging: true,
+    financialReports: true,
     analytics: true,
     multiBranch: true,
     features: [

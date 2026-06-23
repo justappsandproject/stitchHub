@@ -1,8 +1,10 @@
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Lock, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { PLAN_CONFIG } from '@stitchhub/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+const planOrder = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
 
 export function LandingPricing() {
   return (
@@ -16,17 +18,15 @@ export function LandingPricing() {
             Grow at your own pace
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            14-day free trial on Starter. No credit card required. Upgrade when
-            your atelier is ready.
+            Start free with up to 5 customers. Upgrade when your atelier is
+            ready — no credit card required to begin.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-6 lg:grid-cols-3">
-          {(
-            Object.entries(PLAN_CONFIG) as Array<
-              [string, (typeof PLAN_CONFIG)[keyof typeof PLAN_CONFIG]]
-            >
-          ).map(([key, plan]) => {
+        <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {planOrder.map((key) => {
+            const plan = PLAN_CONFIG[key];
+            const isFree = key === 'FREE';
             const isPopular = key === 'PROFESSIONAL';
             return (
               <div
@@ -34,14 +34,21 @@ export function LandingPricing() {
                 className={cn(
                   'relative flex flex-col rounded-2xl border bg-card p-8 transition-all duration-300',
                   isPopular
-                    ? 'scale-[1.02] border-primary shadow-2xl shadow-primary/15 ring-1 ring-primary/20'
-                    : 'hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl',
+                    ? 'scale-[1.02] border-primary shadow-2xl shadow-primary/15 ring-1 ring-primary/20 lg:col-span-1'
+                    : isFree
+                      ? 'border-gold/40 shadow-md'
+                      : 'hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl',
                 )}
               >
                 {isPopular && (
                   <span className="absolute -top-3.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-gradient-to-r from-primary to-rose-500 px-4 py-1 text-xs font-semibold text-white shadow-lg">
                     <Sparkles className="h-3 w-3" />
                     Most popular
+                  </span>
+                )}
+                {isFree && (
+                  <span className="absolute -top-3.5 left-1/2 inline-flex -translate-x-1/2 rounded-full bg-gold px-4 py-1 text-xs font-semibold text-gold-foreground shadow">
+                    Get started free
                   </span>
                 )}
                 <h3 className="font-heading text-xl font-bold">{plan.name}</h3>
@@ -54,11 +61,11 @@ export function LandingPricing() {
                   </span>
                   <span className="text-muted-foreground">/mo</span>
                 </p>
-                <ul className="mb-8 mt-8 flex-1 space-y-3">
+                <ul className="mb-4 mt-8 flex-1 space-y-3">
                   {plan.features.map((feature) => (
                     <li
                       key={feature}
-                      className="flex items-start gap-3 text-sm"
+                      className="flex items-start gap-3 text-sm text-foreground"
                     >
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
                         <Check className="h-3 w-3 text-primary" />
@@ -66,9 +73,20 @@ export function LandingPricing() {
                       {feature}
                     </li>
                   ))}
+                  {plan.lockedFeatures?.map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-3 text-sm text-muted-foreground"
+                    >
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary">
+                        <Lock className="h-3 w-3" />
+                      </span>
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
                 <Button
-                  variant={isPopular ? 'default' : 'outline'}
+                  variant={isPopular || isFree ? 'default' : 'outline'}
                   size="lg"
                   asChild
                   className={cn(
@@ -77,7 +95,9 @@ export function LandingPricing() {
                       'bg-gradient-to-r from-primary to-rose-500 shadow-lg shadow-primary/20 hover:opacity-90',
                   )}
                 >
-                  <Link href="/register">Start free trial</Link>
+                  <Link href="/register">
+                    {isFree ? 'Get Started — Free' : 'Start free trial'}
+                  </Link>
                 </Button>
               </div>
             );

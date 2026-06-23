@@ -18,6 +18,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
 import { resolveTenantId } from '../common/utils/tenant-scope';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateStyleDto, StyleQueryDto, UpdateStyleDto } from './dto/style.dto';
 import { TryOnDto } from './dto/try-on.dto';
 import { StylesService } from './styles.service';
@@ -27,7 +28,10 @@ import { StylesService } from './styles.service';
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 @ApiBearerAuth()
 export class StylesController {
-  constructor(private stylesService: StylesService) {}
+  constructor(
+    private stylesService: StylesService,
+    private subscriptions: SubscriptionsService,
+  ) {}
 
   @Get()
   @Roles(
@@ -65,7 +69,9 @@ export class StylesController {
   @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateStyleDto) {
     const tenantId = resolveTenantId(user);
-    return this.stylesService.create(tenantId, dto);
+    return this.subscriptions
+      .assertFeature(tenantId, 'styleStore')
+      .then(() => this.stylesService.create(tenantId, dto));
   }
 
   @Patch(':id')
@@ -76,14 +82,18 @@ export class StylesController {
     @Body() dto: UpdateStyleDto,
   ) {
     const tenantId = resolveTenantId(user);
-    return this.stylesService.update(tenantId, id, dto);
+    return this.subscriptions
+      .assertFeature(tenantId, 'styleStore')
+      .then(() => this.stylesService.update(tenantId, id, dto));
   }
 
   @Delete(':id')
   @Roles(UserRole.TENANT_OWNER, UserRole.MANAGER)
   remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     const tenantId = resolveTenantId(user);
-    return this.stylesService.remove(tenantId, id);
+    return this.subscriptions
+      .assertFeature(tenantId, 'styleStore')
+      .then(() => this.stylesService.remove(tenantId, id));
   }
 
   @Post(':id/try-on')

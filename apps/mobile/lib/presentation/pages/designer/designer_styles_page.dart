@@ -1,8 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/subscription/plan_gate.dart';
 import 'package:stitchhub_mobile/core/theme/app_theme.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
@@ -41,7 +40,11 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
   }
 
   Future<void> _showAddSheet() async {
-    await _showStyleSheet();
+    await guardFeatureNavigation(
+      context,
+      GatedFeature.styleStore,
+      onAllowed: () => _showStyleSheet(),
+    );
   }
 
   Future<void> _showStyleSheet({StyleEntity? style}) async {
@@ -51,6 +54,12 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
     final descController = TextEditingController(text: style?.description ?? '');
     final priceController = TextEditingController(
       text: style?.basePrice != null ? '${style!.basePrice}' : '',
+    );
+    final stockController = TextEditingController(
+      text: style != null ? '${style.stockQuantity}' : '0',
+    );
+    final tagsController = TextEditingController(
+      text: style?.tags.join(', ') ?? '',
     );
     final photoUrls = List<String>.from(style?.photoUrls ?? []);
     final videoUrls = List<String>.from(style?.videoUrls ?? []);
@@ -82,7 +91,9 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                     TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
                     TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category')),
                     TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 2),
-                    TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Base price (₦)'), keyboardType: TextInputType.number),
+                    TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price (₦)'), keyboardType: TextInputType.number),
+                    TextField(controller: stockController, decoration: const InputDecoration(labelText: 'Stock quantity'), keyboardType: TextInputType.number),
+                    TextField(controller: tagsController, decoration: const InputDecoration(labelText: 'Tags (comma separated)')),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
                       onPressed: () async {
@@ -148,6 +159,12 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                                     'description': descController.text.trim(),
                                   if (priceController.text.trim().isNotEmpty)
                                     'basePrice': double.tryParse(priceController.text.trim()),
+                                  'stockQuantity': int.tryParse(stockController.text.trim()) ?? 0,
+                                  'tags': tagsController.text
+                                      .split(',')
+                                      .map((t) => t.trim())
+                                      .where((t) => t.isNotEmpty)
+                                      .toList(),
                                   'photoUrls': photoUrls,
                                   'videoUrls': videoUrls,
                                   'isActive': style?.isActive ?? true,
@@ -202,22 +219,7 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
     }
   }
 
-  void _navigate(int index) {
-    switch (index) {
-      case 0:
-        context.go(AppRouter.designerHome);
-      case 1:
-        context.go(AppRouter.designerOrders);
-      case 2:
-        context.go(AppRouter.designerMessages);
-      case 3:
-        context.go(AppRouter.designerCustomers);
-      case 4:
-        context.go(AppRouter.designerMore);
-      case 5:
-        context.go(AppRouter.settings);
-    }
-  }
+  void _navigate(int index) => navigateDesignerShell(context, index);
 
   @override
   Widget build(BuildContext context) {
@@ -274,6 +276,14 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                               children: [
                                 Text(style.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
                                 Text(style.category, style: Theme.of(context).textTheme.bodySmall),
+                                Text(
+                                  style.inStock ? 'In stock (${style.stockQuantity})' : 'Out of stock',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: style.inStock ? AppTheme.success : AppTheme.danger,
+                                  ),
+                                ),
                                 if (style.basePrice != null)
                                   Text(formatNgn(style.basePrice!), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                                 Row(

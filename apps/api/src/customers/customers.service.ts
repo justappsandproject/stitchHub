@@ -1,11 +1,16 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
+import {
+  generateSecurePassword,
+  usernameBase,
+} from '../common/utils/credentials.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/services/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -26,7 +31,37 @@ export class CustomersService {
     private notifications: NotificationsService,
   ) {}
 
-  async create(tenantId: string, dto: CreateCustomerDto) {
+  private async generateUniqueUsername(
+    firstName: string,
+    lastName: string,
+    preferred?: string,
+  ): Promise<string> {
+    if (preferred) {
+      const taken = await this.prisma.user.findUnique({
+        where: { username: preferred },
+      });
+      if (!taken) return preferred;
+    }
+
+    const base = usernameBase(firstName, lastName) || 'customer';
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const suffix = Math.floor(Math.random() * 900 + 100);
+      const candidate = `${base}${suffix}`;
+      const [userHit, customerHit] = await Promise.all([
+        this.prisma.user.findUnique({ where: { username: candidate } }),
+        this.prisma.customer.findFirst({ where: { username: candidate } }),
+      ]);
+      if (!userHit && !customerHit) return candidate;
+    }
+    throw new ConflictException('Could not generate a unique username');
+  }
+
+  async create(
+    tenantId: string,
+    dto: CreateCustomerDto,
+    actorId?: string,
+    preferredUsername?: string,
+  ) {
     await this.subscriptions.assertCanAddCustomer(tenantId);
 
     const existing = await this.prisma.customer.findUnique({
@@ -37,39 +72,19 @@ export class CustomersService {
       throw new ConflictException('Customer with this phone already exists');
     }
 
-    return this.prisma.customer.create({
-      data: {
-        tenantId,
-        ...dto,
-        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-      },
-    });
-  }
-
-  private generateUsername(firstName: string, lastName: string) {
-    const base = `${firstName}.${lastName}`.toLowerCase().replace(/[^a-z0-9.]/g, '');
-    const suffix = Math.floor(Math.random() * 900 + 100);
-    return `${base}${suffix}`;
-  }
-
-  async onboard(tenantId: string, actorId: string, dto: OnboardCustomerDto) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
     });
     if (!tenant) throw new NotFoundException('Tenant not found');
 
-    const customer = await this.create(tenantId, {
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      phone: dto.phone,
-      email: dto.email,
-    });
-
-    const username = dto.username ?? this.generateUsername(dto.firstName, dto.lastName);
-    const tempPassword = Math.random().toString(36).slice(-8);
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
-    const email =
-      dto.email ?? `${username}@customers.stitchhub.local`;
+    const username = await this.generateUniqueUsername(
+      dto.firstName,
+      dto.lastName,
+      preferredUsername,
+    );
+    const plainPassword = generateSecurePassword(10);
+    const passwordHash = await bcrypt.hash(plainPassword, 12);
+    const email = dto.email ?? `${username}@customers.stitchhub.local`;
 
     const user = await this.prisma.user.create({
       data: {
@@ -86,37 +101,75 @@ export class CustomersService {
       },
     });
 
-    await this.prisma.customer.update({
-      where: { id: customer.id },
-      data: { userId: user.id },
+    const customer = await this.prisma.customer.create({
+      data: {
+        tenantId,
+        userId: user.id,
+        username,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        email: dto.email,
+        gender: dto.gender,
+        address: dto.address,
+        photoUrl: dto.photoUrl,
+        notes: dto.notes,
+        isVip: dto.isVip ?? false,
+        tags: dto.tags ?? [],
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+      },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId: actorId,
-      action: 'CUSTOMER_ONBOARDED',
-      entity: 'Customer',
-      entityId: customer.id,
-      metadata: { username },
-    });
-
-    const message = `${tenant.name} has added you to StitchHub. Download the app and log in with Username: ${username} and Password: ${tempPassword}. You'll be prompted to change your password on first login.`;
+    const welcomeMessage = `${tenant.name} has added you to StitchHub. Log in with Username: ${username} and Password: ${plainPassword}. You'll be prompted to change your password on first login.`;
 
     await this.notifications.notifyCustomerOnboard({
       email: dto.email,
       phone: dto.phone,
       fashionHouseName: tenant.name,
       username,
-      tempPassword,
-      welcomeMessage: message,
+      tempPassword: plainPassword,
+      welcomeMessage,
       userId: user.id,
     });
 
+    if (actorId) {
+      await this.audit.log({
+        tenantId,
+        userId: actorId,
+        action: 'CUSTOMER_CREATED',
+        entity: 'Customer',
+        entityId: customer.id,
+        metadata: { username },
+      });
+    }
+
     return {
-      customer: { ...customer, userId: user.id },
-      username,
-      temporaryPassword: tempPassword,
-      welcomeMessage: message,
+      ...customer,
+      credentials: {
+        username,
+        password: plainPassword,
+      },
+    };
+  }
+
+  async onboard(tenantId: string, actorId: string, dto: OnboardCustomerDto) {
+    const result = await this.create(
+      tenantId,
+      {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        email: dto.email,
+      },
+      actorId,
+      dto.username,
+    );
+
+    return {
+      customer: result,
+      username: result.credentials.username,
+      temporaryPassword: result.credentials.password,
+      welcomeMessage: `Share these credentials with your customer. Username: ${result.credentials.username}`,
     };
   }
 

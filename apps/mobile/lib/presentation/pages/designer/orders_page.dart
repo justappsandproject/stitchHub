@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stitchhub_mobile/core/constants/enums.dart';
 import 'package:stitchhub_mobile/core/router/app_router.dart';
+import 'package:stitchhub_mobile/core/subscription/plan_gate.dart';
 import 'package:stitchhub_mobile/core/utils/json_utils.dart';
 import 'package:stitchhub_mobile/core/utils/role_utils.dart';
 import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
@@ -32,20 +33,7 @@ class _OrdersPageState extends State<OrdersPage> {
     sl<OrdersBloc>().add(OrdersLoadRequested(status: _statusFilter));
   }
 
-  void _navigate(int index) {
-    switch (index) {
-      case 0:
-        context.go(AppRouter.designerHome);
-      case 1:
-        context.go(AppRouter.designerOrders);
-      case 2:
-        context.go(AppRouter.designerMessages);
-      case 3:
-        context.go(AppRouter.designerCustomers);
-      case 4:
-        context.go(AppRouter.designerMore);
-    }
-  }
+  void _navigate(int index) => navigateDesignerShell(context, index);
 
   Future<void> _showStatusSheet(String orderId, OrderStatus current) async {
     const nextStatuses = [

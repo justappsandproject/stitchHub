@@ -54,7 +54,7 @@ export default function RegisterPage() {
       localStorage.setItem('accessToken', res.accessToken);
       localStorage.setItem('refreshToken', res.refreshToken);
       localStorage.setItem('user', JSON.stringify(res.user));
-      router.push('/dashboard');
+      router.push('/dashboard?welcome=1');
     } catch (err: unknown) {
       const apiErr = err as { message?: string };
       setError(apiErr.message ?? 'Registration failed');
