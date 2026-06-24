@@ -1,0 +1,6 @@
+# Copy to key.properties and fill in after generating your upload keystore.
+# See README.md — "Release signing (Play Store)".
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=stitchhub
+storeFile=stitchhub-release.jks

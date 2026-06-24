@@ -126,6 +126,39 @@ Fashion house owners can upgrade plans from **Billing**:
 - FCM token is cached locally but not yet registered with the API
 - Customer measurements screen exists on web only (not mobile yet)
 
+## Release signing (Play Store)
+
+Google Play rejects builds signed with the debug key. Release builds use `android/key.properties` + a upload keystore (both gitignored).
+
+**First-time setup** (already done on this machine if `android/key.properties` exists):
+
+```bash
+cd apps/mobile/android
+keytool -genkeypair -v \
+  -keystore app/stitchhub-release.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -alias stitchhub \
+  -storepass YOUR_STORE_PASSWORD \
+  -keypass YOUR_KEY_PASSWORD \
+  -dname "CN=StitchHub, OU=Mobile, O=JustApps, L=Lagos, ST=Lagos, C=NG"
+
+cp key.properties.example key.properties
+# Edit key.properties with your passwords
+```
+
+**Build signed release artifacts:**
+
+```bash
+cd apps/mobile
+flutter build apk --release
+flutter build appbundle --release
+```
+
+- APK: `build/app/outputs/flutter-apk/app-release.apk`
+- AAB: `build/app/outputs/bundle/release/app-release.aab`
+
+Back up `stitchhub-release.jks` and `key.properties` securely — you need the same key for all future Play Store updates.
+
 ## Build test APKs
 
 ```bash
