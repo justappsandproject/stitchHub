@@ -91,7 +91,7 @@ class _DesignerStylesPageState extends State<DesignerStylesPage> {
                     TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
                     TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category')),
                     TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 2),
-                    TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price (₦)'), keyboardType: TextInputType.number),
+                    TextField(controller: priceController, decoration: const InputDecoration(labelText: 'Price (₦, optional)'), keyboardType: TextInputType.number),
                     TextField(controller: stockController, decoration: const InputDecoration(labelText: 'Stock quantity'), keyboardType: TextInputType.number),
                     TextField(controller: tagsController, decoration: const InputDecoration(labelText: 'Tags (comma separated)')),
                     const SizedBox(height: 8),

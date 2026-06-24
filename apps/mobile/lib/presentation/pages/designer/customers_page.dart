@@ -112,46 +112,9 @@ class _CustomersPageState extends State<CustomersPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Customer Account Created',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.navy),
-            ),
-            const SizedBox(height: 16),
-            Text('Username: $username', style: const TextStyle(color: AppTheme.navy, fontSize: 15)),
-            const SizedBox(height: 8),
-            Text('Password: $password', style: const TextStyle(color: AppTheme.navy, fontSize: 15)),
-            const SizedBox(height: 12),
-            const Text(
-              'Share these details with your customer. This password will not be shown again.',
-              style: TextStyle(color: AppTheme.muted, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () {
-                Clipboard.setData(
-                  ClipboardData(text: 'Username: $username\nPassword: $password'),
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Credentials copied')),
-                );
-              },
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: const Text('Copy Credentials'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: const Text('Done'),
-            ),
-          ],
-        ),
+      builder: (context) => _CustomerCredentialsSheet(
+        username: username,
+        password: password,
       ),
     );
   }
@@ -362,6 +325,91 @@ class _CustomersPageState extends State<CustomersPage> {
                           );
                         },
                       ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerCredentialsSheet extends StatefulWidget {
+  const _CustomerCredentialsSheet({
+    required this.username,
+    required this.password,
+  });
+
+  final String username;
+  final String password;
+
+  @override
+  State<_CustomerCredentialsSheet> createState() =>
+      _CustomerCredentialsSheetState();
+}
+
+class _CustomerCredentialsSheetState extends State<_CustomerCredentialsSheet> {
+  var _obscurePassword = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Customer Account Created',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.navy),
+          ),
+          const SizedBox(height: 16),
+          Text('Username: ${widget.username}', style: const TextStyle(color: AppTheme.navy, fontSize: 15)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _obscurePassword
+                      ? 'Password: ••••••••'
+                      : 'Password: ${widget.password}',
+                  style: const TextStyle(color: AppTheme.navy, fontSize: 15),
+                ),
+              ),
+              IconButton(
+                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Share these details with your customer. This password will not be shown again.',
+            style: TextStyle(color: AppTheme.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: () {
+              Clipboard.setData(
+                ClipboardData(
+                  text: 'Username: ${widget.username}\nPassword: ${widget.password}',
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Credentials copied')),
+              );
+            },
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            child: const Text('Copy Credentials'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            child: const Text('Done'),
           ),
         ],
       ),

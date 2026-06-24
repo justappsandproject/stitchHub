@@ -38,26 +38,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _photoUrl;
   SubscriptionEntity? _subscription;
   bool _loadingPlan = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPlanIfStaff();
-  }
-
-  Future<void> _loadPlanIfStaff() async {
-    final authState = sl<AuthBloc>().state;
-    if (authState is! AuthAuthenticated || !isStaff(authState.user.role)) return;
-    setState(() => _loadingPlan = true);
-    try {
-      final sub = await sl<SubscriptionRepository>().getCurrent();
-      if (mounted) setState(() => _subscription = sub);
-    } catch (_) {
-      // Plan info is optional in settings.
-    } finally {
-      if (mounted) setState(() => _loadingPlan = false);
-    }
-  }
+  String? _planError;
+  bool _planLoadedForStaff = false;
 
   @override
   void dispose() {
@@ -71,12 +53,38 @@ class _SettingsPageState extends State<SettingsPage> {
     super.dispose();
   }
 
+  Future<void> _loadPlanIfStaff(UserEntity user) async {
+    if (!isStaff(user.role) || _loadingPlan) return;
+    setState(() {
+      _loadingPlan = true;
+      _planError = null;
+    });
+    try {
+      final sub = await sl<SubscriptionRepository>().getCurrent();
+      if (mounted) {
+        setState(() {
+          _subscription = sub;
+          _planLoadedForStaff = true;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _planError = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _planError = errorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loadingPlan = false);
+    }
+  }
+
   void _loadUser(UserEntity user) {
     _firstNameController.text = user.firstName;
     _lastNameController.text = user.lastName;
     _phoneController.text = user.phone ?? '';
     _emailController.text = user.email;
     _photoUrl = user.photoUrl;
+    if (isStaff(user.role) && !_planLoadedForStaff && !_loadingPlan) {
+      _loadPlanIfStaff(user);
+    }
   }
 
   Future<void> _pickPhoto() async {
@@ -150,116 +158,108 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  void _signOut() {
+    context.read<AuthBloc>().add(const AuthLogoutRequested());
+    context.go(AppRouter.login);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final user = state is AuthAuthenticated ? state.user : null;
-        if (user != null &&
-            _firstNameController.text.isEmpty &&
-            _emailController.text.isEmpty) {
-          _loadUser(user);
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthAuthenticated) {
+          _loadUser(state.user);
         }
+      },
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          final user = state is AuthAuthenticated ? state.user : null;
+          if (user != null &&
+              _firstNameController.text.isEmpty &&
+              _emailController.text.isEmpty) {
+            _loadUser(user);
+          }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Settings'),
-            leading: context.canPop()
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.pop(),
-                  )
-                : null,
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Settings'),
+              leading: context.canPop()
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.pop(),
+                    )
+                  : null,
+            ),
+            bottomNavigationBar: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: FilledButton.icon(
+                  onPressed: _signOut,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    foregroundColor: Theme.of(context).colorScheme.onError,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sign out'),
                 ),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 16),
-                      Center(
-                        child: GestureDetector(
-                          onTap: _pickPhoto,
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundImage: _photoUrl != null
-                                ? CachedNetworkImageProvider(_photoUrl!)
-                                : null,
-                            child: _photoUrl == null
-                                ? Text(user?.firstName.isNotEmpty == true ? user!.firstName[0] : '?')
-                                : null,
+              ),
+            ),
+            body: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              children: [
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: GestureDetector(
+                            onTap: _pickPhoto,
+                            child: CircleAvatar(
+                              radius: 40,
+                              backgroundImage: _photoUrl != null
+                                  ? CachedNetworkImageProvider(_photoUrl!)
+                                  : null,
+                              child: _photoUrl == null
+                                  ? Text(user?.firstName.isNotEmpty == true ? user!.firstName[0] : '?')
+                                  : null,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(child: TextButton(onPressed: _pickPhoto, child: const Text('Change photo'))),
-                      TextField(controller: _firstNameController, decoration: const InputDecoration(labelText: 'First name')),
-                      const SizedBox(height: 12),
-                      TextField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Last name')),
-                      const SizedBox(height: 12),
-                      TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone')),
-                      const SizedBox(height: 12),
-                      TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
-                      if (_profileMessage != null) ...[
                         const SizedBox(height: 8),
-                        Text(_profileMessage!, style: const TextStyle(color: Colors.green)),
+                        Center(child: TextButton(onPressed: _pickPhoto, child: const Text('Change photo'))),
+                        TextField(controller: _firstNameController, decoration: const InputDecoration(labelText: 'First name')),
+                        const SizedBox(height: 12),
+                        TextField(controller: _lastNameController, decoration: const InputDecoration(labelText: 'Last name')),
+                        const SizedBox(height: 12),
+                        TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                        const SizedBox(height: 12),
+                        TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
+                        if (_profileMessage != null) ...[
+                          const SizedBox(height: 8),
+                          Text(_profileMessage!, style: const TextStyle(color: Colors.green)),
+                        ],
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _savingProfile ? null : _saveProfile,
+                          child: Text(_savingProfile ? 'Saving...' : 'Save profile'),
+                        ),
                       ],
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _savingProfile ? null : _saveProfile,
-                        child: Text(_savingProfile ? 'Saving...' : 'Save profile'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Change password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 16),
-                      PasswordTextField(
-                        controller: _currentPasswordController,
-                        labelText: 'Current password',
-                      ),
-                      const SizedBox(height: 12),
-                      PasswordTextField(
-                        controller: _newPasswordController,
-                        labelText: 'New password',
-                      ),
-                      const SizedBox(height: 12),
-                      PasswordTextField(
-                        controller: _confirmPasswordController,
-                        labelText: 'Confirm password',
-                      ),
-                      if (_passwordMessage != null) ...[
-                        const SizedBox(height: 8),
-                        Text(_passwordMessage!, style: const TextStyle(color: Colors.green)),
-                      ],
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _savingPassword ? null : _changePassword,
-                        child: Text(_savingPassword ? 'Saving...' : 'Update password'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (user != null && isStaff(user.role)) ...[
                 const SizedBox(height: 16),
                 Card(
                   child: Padding(
@@ -267,91 +267,146 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Subscription',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Your atelier subscription and usage',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                        const Text('Change password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         const SizedBox(height: 16),
-                        if (_loadingPlan)
-                          const Center(child: CircularProgressIndicator())
-                        else if (_subscription != null) ...[
-                          Text(
-                            '${_subscription!.configName ?? _subscription!.plan.value} plan',
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
-                          ),
-                          const SizedBox(height: 4),
-                          Text('Status: ${_subscription!.status.replaceAll('_', ' ')}'),
-                          if (_subscription!.priceNgn != null)
-                            Text('${formatNgn(_subscription!.priceNgn!)}/month'),
-                          if (_subscription!.usageCustomers != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              'Customers: ${_subscription!.usageCustomers}${_subscription!.maxCustomers != null ? ' / ${_subscription!.maxCustomers}' : ''}',
-                            ),
-                          ],
-                          if (_subscription!.usageOrdersThisMonth != null)
-                            Text(
-                              'Orders this month: ${_subscription!.usageOrdersThisMonth}${_subscription!.maxOrdersPerMonth != null ? ' / ${_subscription!.maxOrdersPerMonth}' : ''}',
-                            ),
-                          const SizedBox(height: 12),
-                          OutlinedButton(
-                            onPressed: () => context.push(AppRouter.planDetail),
-                            child: const Text('View plan details'),
-                          ),
+                        PasswordTextField(
+                          controller: _currentPasswordController,
+                          labelText: 'Current password',
+                        ),
+                        const SizedBox(height: 12),
+                        PasswordTextField(
+                          controller: _newPasswordController,
+                          labelText: 'New password',
+                        ),
+                        const SizedBox(height: 12),
+                        PasswordTextField(
+                          controller: _confirmPasswordController,
+                          labelText: 'Confirm password',
+                        ),
+                        if (_passwordMessage != null) ...[
                           const SizedBox(height: 8),
-                          OutlinedButton(
-                            onPressed: () => context.go(AppRouter.designerBilling),
-                            child: const Text('Manage billing'),
-                          ),
-                        ] else
-                          const Text('Unable to load plan details'),
+                          Text(_passwordMessage!, style: const TextStyle(color: Colors.green)),
+                        ],
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _savingPassword ? null : _changePassword,
+                          child: Text(_savingPassword ? 'Saving...' : 'Update password'),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ],
-              if (user != null && isStaff(user.role)) ...[
                 const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () => context.go(AppRouter.designerHome),
-                  icon: const Icon(Icons.dashboard_outlined),
-                  label: const Text('Back to Dashboard'),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.support_agent),
+                    title: const Text('Support'),
+                    subtitle: Text(
+                      user != null && isStaff(user.role)
+                          ? 'Chat with StitchHub or manage customer tickets'
+                          : 'Chat with your fashion house or open a ticket',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRouter.support),
+                  ),
                 ),
+                if (user != null && isStaff(user.role)) ...[
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Subscription',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Your atelier subscription and usage',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 16),
+                          if (_loadingPlan)
+                            const Center(child: CircularProgressIndicator())
+                          else if (_subscription != null) ...[
+                            Text(
+                              '${_subscription!.configName ?? _subscription!.plan.value} plan',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('Status: ${_subscription!.status.replaceAll('_', ' ')}'),
+                            if (_subscription!.priceNgn != null)
+                              Text('${formatNgn(_subscription!.priceNgn!)}/month'),
+                            if (_subscription!.usageCustomers != null) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Customers: ${_subscription!.usageCustomers}${_subscription!.maxCustomers != null ? ' / ${_subscription!.maxCustomers}' : ''}',
+                              ),
+                            ],
+                            if (_subscription!.usageOrdersThisMonth != null)
+                              Text(
+                                'Orders this month: ${_subscription!.usageOrdersThisMonth}${_subscription!.maxOrdersPerMonth != null ? ' / ${_subscription!.maxOrdersPerMonth}' : ''}',
+                              ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: () => context.push(AppRouter.planDetail),
+                              child: const Text('View plan details'),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: () => context.go(AppRouter.designerBilling),
+                              child: const Text('Manage billing'),
+                            ),
+                          ] else ...[
+                            Text(
+                              _planError ?? 'Unable to load plan details',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: () => _loadPlanIfStaff(user),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (user != null && isStaff(user.role)) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go(AppRouter.designerHome),
+                    icon: const Icon(Icons.dashboard_outlined),
+                    label: const Text('Back to Dashboard'),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Push notifications'),
+                  subtitle: Text(
+                    sl<PushNotificationService>().cachedToken != null
+                        ? 'Device registered with Firebase'
+                        : 'Not registered yet',
+                  ),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.sync),
+                  title: const Text('Offline sync'),
+                  subtitle: const Text('Changes queue automatically when offline'),
+                ),
+                const SizedBox(height: 72),
               ],
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Push notifications'),
-                subtitle: Text(
-                  sl<PushNotificationService>().cachedToken != null
-                      ? 'Device registered with Firebase'
-                      : 'Not registered yet',
-                ),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.sync),
-                title: const Text('Offline sync'),
-                subtitle: const Text('Changes queue automatically when offline'),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Sign out', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  context.read<AuthBloc>().add(const AuthLogoutRequested());
-                  context.go(AppRouter.login);
-                },
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 }

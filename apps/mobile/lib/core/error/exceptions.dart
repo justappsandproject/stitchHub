@@ -12,6 +12,15 @@ class ApiException implements Exception {
   bool get isSessionExpired => code == 'SESSION_EXPIRED';
   bool get isSubscriptionSuspended => code == 'SUBSCRIPTION_SUSPENDED';
   bool get isPlanLimitReached => code == 'PLAN_LIMIT_REACHED';
+
+  @override
+  String toString() => message;
+}
+
+String errorMessage(Object error) {
+  if (error is ApiException) return error.message;
+  if (error is NetworkException) return error.message;
+  return error.toString();
 }
 
 class NetworkException implements Exception {

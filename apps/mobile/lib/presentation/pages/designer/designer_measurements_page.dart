@@ -50,24 +50,37 @@ class _DesignerMeasurementsPageState extends State<DesignerMeasurementsPage> {
   }
 
   Future<void> _loadInitial() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final results = await Future.wait([
-        sl<CustomersRepository>().getCustomers(),
-        sl<MeasurementsRepository>().getTemplates(),
-      ]);
-      _customers = results[0] as List<CustomerEntity>;
-      _templates = results[1] as List<MeasurementTemplateEntity>;
-      if (_selectedCustomerId == null && _customers.isNotEmpty) {
-        _selectedCustomerId = _customers.first.id;
-      }
+      final templates = await sl<MeasurementsRepository>().getTemplates();
+      _templates = templates;
       if (_templates.isNotEmpty) {
         _selectedTemplateId = _templates.first.id;
         _initFields(_templates.first);
       }
-      await _loadMeasurements();
+
+      try {
+        _customers = await sl<CustomersRepository>().getCustomers();
+        if (_selectedCustomerId == null && _customers.isNotEmpty) {
+          _selectedCustomerId = _customers.first.id;
+        }
+        await _loadMeasurements();
+      } on ApiException catch (e) {
+        if (widget.customerId != null) {
+          _selectedCustomerId = widget.customerId;
+          await _loadMeasurements();
+        } else {
+          rethrow;
+        }
+        if (_customers.isEmpty) {
+          _error = e.message;
+        }
+      }
     } catch (e) {
-      _error = e.toString();
+      setState(() => _error = errorMessage(e));
     } finally {
       setState(() => _loading = false);
     }

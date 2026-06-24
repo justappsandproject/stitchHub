@@ -22,7 +22,7 @@ class _DesignerMorePageState extends State<DesignerMorePage> {
       (icon: Icons.inventory_2_outlined, label: 'Inventory', route: AppRouter.designerInventory, gate: null),
       (icon: Icons.payments_outlined, label: 'Payments', route: AppRouter.designerBilling, gate: null),
       (icon: Icons.settings_outlined, label: 'Settings', route: AppRouter.settings, gate: null),
-      (icon: Icons.support_agent, label: 'Support', route: AppRouter.settings, gate: null),
+      (icon: Icons.support_agent, label: 'Support', route: AppRouter.support, gate: null),
     ];
 
     return DesignerShell(

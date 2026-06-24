@@ -789,6 +789,78 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     final list = await _apiClient.getList('/subscriptions/plans');
     return list.cast<Map<String, dynamic>>();
   }
+
+  @override
+  Future<Map<String, dynamic>> changePlan(String plan) async {
+    return _apiClient.post('/subscriptions/change-plan', data: {'plan': plan});
+  }
+}
+
+class TicketsRepositoryImpl implements TicketsRepository {
+  TicketsRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<List<Map<String, dynamic>>> getTickets() async {
+    final list = await _apiClient.getList('/tickets');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<Map<String, dynamic>> getTicket(String id) async {
+    return _apiClient.get('/tickets/$id');
+  }
+
+  @override
+  Future<Map<String, dynamic>> createTicket(Map<String, dynamic> data) async {
+    return _apiClient.post('/tickets', data: data);
+  }
+
+  @override
+  Future<Map<String, dynamic>> addReply(String ticketId, String content) async {
+    return _apiClient.post(
+      '/tickets/$ticketId/replies',
+      data: {'content': content},
+    );
+  }
+
+  @override
+  Future<void> updateStatus(String ticketId, String status) async {
+    await _apiClient.patch(
+      '/tickets/$ticketId/status',
+      data: {'status': status},
+    );
+  }
+}
+
+class ConversationsRepositoryImpl implements ConversationsRepository {
+  ConversationsRepositoryImpl(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<List<Map<String, dynamic>>> getInbox() async {
+    final list = await _apiClient.getList('/conversations/inbox');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getThread(String customerId) async {
+    final list = await _apiClient.getList('/conversations/$customerId');
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  @override
+  Future<void> sendMessage({
+    required String customerId,
+    required String content,
+  }) async {
+    await _apiClient.post(
+      '/conversations',
+      data: {'customerId': customerId, 'content': content},
+    );
+  }
 }
 
 class AdminRepositoryImpl implements AdminRepository {

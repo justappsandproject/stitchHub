@@ -85,6 +85,12 @@ Future<void> initDependencies({String? apiBaseUrl}) async {
     ..registerLazySingleton<SubscriptionRepository>(
       () => SubscriptionRepositoryImpl(sl()),
     )
+    ..registerLazySingleton<TicketsRepository>(
+      () => TicketsRepositoryImpl(sl()),
+    )
+    ..registerLazySingleton<ConversationsRepository>(
+      () => ConversationsRepositoryImpl(sl()),
+    )
     ..registerLazySingleton<AdminRepository>(
       () => AdminRepositoryImpl(sl()),
     )

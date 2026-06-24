@@ -7,7 +7,7 @@
     "prebuild": "pnpm --filter @stitchhub/shared build && pnpm exec prisma generate",
     "dev": "nest start --watch",
     "start": "node dist/src/main",
-    "start:prod": "node dist/src/main",
+    "start:prod": "pnpm exec prisma migrate deploy && node dist/src/main",
     "db:generate": "pnpm exec prisma generate",
     "db:migrate": "pnpm exec prisma migrate dev",
     "db:push": "pnpm exec prisma db push",

@@ -176,7 +176,7 @@ class SubscriptionModel extends SubscriptionEntity {
     final config = json['config'] as Map<String, dynamic>?;
     final usage = json['usage'] as Map<String, dynamic>?;
     return SubscriptionModel(
-      plan: SubscriptionPlan.fromString(json['plan'] as String? ?? 'STARTER'),
+      plan: SubscriptionPlan.fromString(json['plan'] as String? ?? 'FREE'),
       status: json['status'] as String? ?? 'TRIALING',
       isSuspended: json['isSuspended'] as bool? ?? false,
       requiresPayment: json['requiresPayment'] as bool? ?? false,

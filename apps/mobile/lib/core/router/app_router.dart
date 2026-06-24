@@ -31,6 +31,7 @@ import 'package:stitchhub_mobile/presentation/pages/designer/designer_inventory_
 import 'package:stitchhub_mobile/presentation/pages/designer/designer_more_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/plan_detail_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/shared/settings_page.dart';
+import 'package:stitchhub_mobile/presentation/pages/shared/support_page.dart';
 import 'package:stitchhub_mobile/presentation/pages/splash_page.dart';
 
 typedef AuthUserResolver = UserEntity? Function();
@@ -62,6 +63,7 @@ class AppRouter {
   static const customerStyles = '/customer/styles';
   static const customerPortfolio = '/customer/portfolio';
   static const settings = '/settings';
+  static const support = '/support';
 
   static const designerCreateOrder = '/designer/orders/new';
   static const planDetail = '/settings/plan';
@@ -118,6 +120,7 @@ class AppRouter {
           builder: (_, __) => const RegisterCustomerPage(),
         ),
         GoRoute(path: settings, builder: (_, __) => const SettingsPage()),
+        GoRoute(path: support, builder: (_, __) => const SupportPage()),
         GoRoute(path: planDetail, builder: (_, __) => const PlanDetailPage()),
         GoRoute(path: adminHome, builder: (_, __) => const AdminHomePage()),
         GoRoute(path: adminTenants, builder: (_, __) => const AdminTenantsPage()),

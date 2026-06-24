@@ -123,6 +123,21 @@ abstract class PaymentsRepository {
 abstract class SubscriptionRepository {
   Future<SubscriptionEntity> getCurrent();
   Future<List<Map<String, dynamic>>> getPlans();
+  Future<Map<String, dynamic>> changePlan(String plan);
+}
+
+abstract class TicketsRepository {
+  Future<List<Map<String, dynamic>>> getTickets();
+  Future<Map<String, dynamic>> getTicket(String id);
+  Future<Map<String, dynamic>> createTicket(Map<String, dynamic> data);
+  Future<Map<String, dynamic>> addReply(String ticketId, String content);
+  Future<void> updateStatus(String ticketId, String status);
+}
+
+abstract class ConversationsRepository {
+  Future<List<Map<String, dynamic>>> getInbox();
+  Future<List<Map<String, dynamic>>> getThread(String customerId);
+  Future<void> sendMessage({required String customerId, required String content});
 }
 
 abstract class AdminRepository {
