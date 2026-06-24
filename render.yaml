@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api... build
+    buildCommand: corepack enable && pnpm install --prod=false && pnpm --filter @stitchhub/api... build && cd apps/api && pnpm exec prisma migrate deploy
     startCommand: cd apps/api && pnpm exec prisma migrate deploy && cd ../.. && node apps/api/dist/src/main.js
     healthCheckPath: /api/v1/subscriptions/plans
     envVars:
