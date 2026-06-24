@@ -63,7 +63,10 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: const InputDecoration(labelText: 'Email or username'),
                 ),
                 const SizedBox(height: 16),
-                PasswordTextField(controller: _passwordController),
+                PasswordTextField(
+                  controller: _passwordController,
+                  labelText: 'Password',
+                ),
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: loading

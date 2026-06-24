@@ -11,6 +11,7 @@ import 'package:stitchhub_mobile/domain/entities/app_entities.dart';
 import 'package:stitchhub_mobile/domain/repositories/repositories.dart';
 import 'package:stitchhub_mobile/injection_container.dart';
 import 'package:stitchhub_mobile/presentation/widgets/app_shell.dart';
+import 'package:stitchhub_mobile/presentation/widgets/password_text_field.dart';
 
 class CustomersPage extends StatefulWidget {
   const CustomersPage({super.key});
@@ -347,8 +348,6 @@ class _CustomerCredentialsSheet extends StatefulWidget {
 }
 
 class _CustomerCredentialsSheetState extends State<_CustomerCredentialsSheet> {
-  var _obscurePassword = true;
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -363,28 +362,8 @@ class _CustomerCredentialsSheetState extends State<_CustomerCredentialsSheet> {
           ),
           const SizedBox(height: 16),
           Text('Username: ${widget.username}', style: const TextStyle(color: AppTheme.navy, fontSize: 15)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _obscurePassword
-                      ? 'Password: ••••••••'
-                      : 'Password: ${widget.password}',
-                  style: const TextStyle(color: AppTheme.navy, fontSize: 15),
-                ),
-              ),
-              IconButton(
-                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 12),
+          RevealablePasswordDisplay(password: widget.password),
           const SizedBox(height: 12),
           const Text(
             'Share these details with your customer. This password will not be shown again.',
